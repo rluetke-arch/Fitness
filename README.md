@@ -3,7 +3,7 @@
 Persönlicher Tracker für den Rauch- und Alkoholstopp mit Vitalwerten, Training, Ernährung und Gamification.
 Läuft als Web-App auf GitHub Pages und lässt sich in Safari über **Teilen → Zum Home-Bildschirm** wie eine App installieren.
 
-Live: https://rluetke-arch.github.io/fitness/
+Live: https://rluetke-arch.github.io/Fitness/
 
 ## Bereiche
 
