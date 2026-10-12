@@ -286,6 +286,7 @@ function weightNearest(entries, targetDate){
 }
 function renderWeight(){
   const entries = sortedWeights(), stats = $("wStats"), chart = $("wChart");
+  renderWeightGoal();
   if (!entries.length){ stats.innerHTML=""; chart.innerHTML='<div class="chart-empty">Noch keine Wiegung eingetragen.</div>'; return; }
   const latest = entries[entries.length-1], dTotal = latest.kg - entries[0].kg;
   const near7 = entries.length>=2 ? weightNearest(entries.slice(0,-1), dateKeyOffset(7)) : null;
@@ -303,7 +304,9 @@ function renderWeight(){
 function renderWChart(entries){
   const W=720,H=220,padL=40,padR=10,padT=14,padB=28, iW=W-padL-padR, iH=H-padT-padB, n=entries.length;
   const vals = entries.map(e=>e.kg);
-  let yMin=Math.floor(Math.min(...vals)-1), yMax=Math.ceil(Math.max(...vals)+1);
+  const tgt = parseFloat($("wTarget").value) || null;
+  const range = tgt ? vals.concat([tgt]) : vals;
+  let yMin=Math.floor(Math.min(...range)-1), yMax=Math.ceil(Math.max(...range)+1);
   if (yMax-yMin<4){ yMin-=1; yMax+=1; }
   const xFor=i=>padL+(n===1?iW/2:(i/(n-1))*iW), yFor=v=>padT+iH-((v-yMin)/(yMax-yMin))*iH;
   let s="";
@@ -317,5 +320,63 @@ function renderWChart(entries){
   pts.forEach(p=>{ s+=`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="#181622" stroke="#2de2c2" stroke-width="2"/>`; });
   if (n>=3){ const r=linReg(vals);
     s+=`<line x1="${xFor(0)}" y1="${yFor(r.inter)}" x2="${xFor(n-1)}" y2="${yFor(r.slope*(n-1)+r.inter)}" stroke="#2de2c2" stroke-width="1.5" stroke-dasharray="5 5" opacity=".5"/>`; }
+  if (tgt){ const y=yFor(tgt).toFixed(1);
+    s+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#3ddc84" stroke-width="1.5" stroke-dasharray="2 6" stroke-linecap="round"/><text x="${W-padR}" y="${y-6}" fill="#3ddc84" font-size="11" text-anchor="end">Ziel ${fmtN(tgt,1)} kg</text>`; }
   $("wChart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gewichtsverlauf">${s}</svg>`;
 }
+
+/* ---------- Zielgewicht und Prognose ---------- */
+const KCAL_PER_KG = 7700;
+function weightGoalInfo(){
+  const target = parseFloat(String($("wTarget").value).replace(",",".")) || null;
+  const entries = sortedWeights();
+  if (!target || !entries.length) return { target, entries };
+  const start = entries[0].kg, latest = entries[entries.length-1];
+  const need = target - latest.kg, total = target - start;
+  const pct = total === 0 ? 100 : Math.max(0, Math.min(100, (latest.kg - start)/total*100));
+  const reached = total === 0 ? true : (total < 0 ? latest.kg <= target : latest.kg >= target);
+  // Trend: Regression über die letzten 6 Wochen, x = echte Kalendertage
+  const recent = entries.filter(e=>e.date >= dateKeyOffset(42));
+  let slopeWeek = null;
+  if (recent.length >= 2){
+    const t0 = parseKey(recent[0].date).getTime();
+    const xs = recent.map(e=>(parseKey(e.date).getTime()-t0)/86400000), ys = recent.map(e=>e.kg);
+    if (xs[xs.length-1] >= 7){
+      const n=xs.length, sx=xs.reduce((a,b)=>a+b,0), sy=ys.reduce((a,b)=>a+b,0), sxy=xs.reduce((a,b,i)=>a+b*ys[i],0), sxx=xs.reduce((a,b)=>a+b*b,0);
+      slopeWeek = (n*sxy-sx*sy)/(n*sxx-sx*sx) * 7;
+    }
+  }
+  let etaDays = null;
+  if (!reached && slopeWeek != null && Math.abs(slopeWeek) >= 0.05 && Math.sign(slopeWeek) === Math.sign(need))
+    etaDays = Math.ceil(need / (slopeWeek/7));
+  return { target, entries, start, latest, need, pct, reached, slopeWeek, etaDays };
+}
+function renderWeightGoal(){
+  const g = weightGoalInfo(), box = $("wGoal");
+  if (!g.target){ box.innerHTML = '<p class="muted small">Trag ein Zielgewicht ein, dann zeige ich dir deinen Fortschritt und wann du es bei deinem Tempo erreichst.</p>'; return; }
+  if (!g.entries.length){ box.innerHTML = '<p class="muted small">Trag oben dein aktuelles Gewicht ein, dann geht es los.</p>'; return; }
+  const sign = v => (v>0?"+":v<0?"−":"") + fmtN(Math.abs(v),1);
+  const items = [];
+  if (g.reached) items.push(anItem("party-popper", `<b>Ziel erreicht.</b> Du wiegst ${fmtN(g.latest.kg,1)} kg. Jetzt geht es ums Halten: Stell das Ernährungsziel auf „Halten“.`, "good"));
+  else {
+    if (g.slopeWeek == null) items.push(anItem("hourglass", "Die Prognose erscheint, sobald du mindestens zweimal im Abstand von einer Woche gewogen hast."));
+    else if (g.etaDays != null){
+      const eta = new Date(); eta.setDate(eta.getDate() + g.etaDays);
+      const when = g.etaDays > 730 ? "in mehr als zwei Jahren" : "etwa am <b>" + eta.toLocaleDateString("de-DE",{day:"numeric",month:"long",year:"numeric"}) + "</b>";
+      items.push(anItem("calendar-check", `Bei deinem Tempo von <b>${sign(g.slopeWeek)} kg pro Woche</b> erreichst du dein Ziel ${when}.`, "good"));
+      const pctBody = Math.abs(g.slopeWeek)/g.latest.kg*100;
+      if (g.need < 0 && pctBody > 1) items.push(anItem("triangle-alert", "Das ist recht schnell. Etwa 0,5 bis 1 kg pro Woche gilt als gut durchhaltbar und schont die Muskulatur.", "warn"));
+    } else items.push(anItem(Math.abs(g.slopeWeek) < 0.05 ? "minus" : (g.slopeWeek>0?"trending-up":"trending-down"),
+      `Dein Trend liegt gerade bei <b>${sign(g.slopeWeek)} kg pro Woche</b>${Math.abs(g.slopeWeek)<0.05?", also stabil":", also in die andere Richtung"}. Daraus lässt sich noch kein Zieldatum ableiten.`, "warn"));
+    if (!parseFloat($("nutriTarget").value) && nutriGoalAdj !== 0 && Math.sign(nutriGoalAdj) === Math.sign(g.need))
+      items.push(anItem("utensils", `Dein Kalorienziel (${nutriGoalAdj>0?"+":"−"}${Math.abs(nutriGoalAdj)} kcal am Tag) entspricht rechnerisch etwa <b>${sign(nutriGoalAdj*7/KCAL_PER_KG)} kg pro Woche</b>.`));
+    else if (nutriGoalAdj === 0 && Math.abs(g.need) >= 0.5)
+      items.push(anItem("utensils", `Tipp: Stell unter Einstellungen das Ernährungsziel auf „${g.need<0?"Abnehmen":"Zunehmen"}“, dann passt dein Kalorienbudget zum Ziel.`));
+  }
+  box.innerHTML = `
+    <div class="goal-row"><span><b>${fmtN(g.latest.kg,1)} kg</b> <small>jetzt</small></span><span class="muted small">${g.reached ? "geschafft" : "noch " + fmtN(Math.abs(g.need),1) + " kg"}</span><span><b>${fmtN(g.target,1)} kg</b> <small>Ziel</small></span></div>
+    <div class="bar bar-teal"><span style="width:${g.pct}%"></span></div>
+    <p class="muted small" style="margin:6px 0 4px">${Math.floor(g.pct)} % des Wegs seit deiner ersten Wiegung (${fmtN(g.start,1)} kg)</p>
+    ${items.join("")}`;
+}
+$("wTarget").addEventListener("input", ()=>{ saveConfig(); renderWeight(); onDataChanged(); });

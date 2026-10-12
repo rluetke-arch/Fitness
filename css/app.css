@@ -636,3 +636,24 @@ body:not([data-panel="uebersicht"]):not([data-panel="rauchfrei"]) .sos-btn { dis
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- Ergänzungen ---------- */
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.steps-form .link-btn { margin-top: 10px; display: inline-block; }
+.steps-guide { margin: 12px 0 12px 20px; display: grid; gap: 10px; font-size: 14px; }
+.steps-guide li { padding-left: 4px; }
+
+#printArea { display: none; }
+@media print {
+  @page { margin: 14mm; }
+  html, body { background: #fff !important; color: #111; }
+  body > *:not(#printArea) { display: none !important; }
+  #printArea { display: block !important; }
+}
+.goal-row { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0 8px; }
+.goal-row b { font-size: 18px; font-weight: 600; }
+.goal-row small { color: var(--muted); font-size: 12px; }
+.district-seg { margin-bottom: 12px; }
+.district-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.district-seg button .ic { width: 15px; height: 15px; }
+.district-seg button.locked { color: var(--faint); }

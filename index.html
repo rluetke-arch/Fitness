@@ -211,6 +211,23 @@
         <div class="log-list" id="logList"></div>
       </div>
 
+      <div class="card">
+        <div class="card-head"><h2>Bericht für die Arztpraxis</h2><span class="chip-ic rose"><i data-ic="clipboard-list"></i></span></div>
+        <p class="muted small">Ein Blutdruck-Protokoll mit allen Messungen, Durchschnitten und Einstufung. Zum Ausdrucken, als PDF oder zum Verschicken.</p>
+        <div class="seg seg-wide" id="reportRangeSeg">
+          <button data-days="14">14 Tage</button>
+          <button data-days="30" class="active">30 Tage</button>
+          <button data-days="90">90 Tage</button>
+          <button data-days="0">Alles</button>
+        </div>
+        <label class="field" style="margin-top:12px"><span>Name im Bericht (optional)</span><input type="text" id="reportName" placeholder="Vor- und Nachname" autocomplete="name"></label>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="reportPrint"><i data-ic="printer"></i>Drucken oder PDF</button>
+          <button class="btn btn-outline" id="reportShare"><i data-ic="share"></i>Als Datei teilen</button>
+        </div>
+        <div class="msg" id="reportMsg"></div>
+      </div>
+
       <div class="sec-head"><h2>Tiefenanalyse</h2></div>
       <div id="deepAnalysis"></div>
     </section>
@@ -231,8 +248,12 @@
           <p class="muted small">Übertrag, was dein iPhone oder deine Uhr heute zählt.</p>
           <label class="field"><span>Schritte</span><input type="number" id="stepsInput" inputmode="numeric" placeholder="8000" min="0" max="120000"></label>
           <label class="field"><span>Datum</span><input type="date" id="stepsDate"></label>
-          <button class="btn btn-primary" id="saveSteps">Speichern</button>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="saveSteps">Speichern</button>
+            <button class="btn btn-outline" id="pasteSteps"><i data-ic="clipboard-paste"></i>Aus Health einfügen</button>
+          </div>
           <div class="msg" id="stepsMsg"></div>
+          <button class="link-btn small" id="shortcutHelp">So richtest du den Kurzbefehl ein</button>
         </div>
       </div>
 
@@ -318,11 +339,18 @@
         <div class="sum-grid" id="wStats"></div>
         <div class="chart-box" id="wChart"></div>
       </div>
+
+      <div class="card goal-weight">
+        <div class="card-head"><h2>Zielgewicht</h2><span class="chip-ic green"><i data-ic="target"></i></span></div>
+        <label class="field field-sm"><span>Ziel in kg</span><input type="number" id="wTarget" step="0.5" min="30" max="250" placeholder="80" inputmode="decimal"></label>
+        <div id="wGoal"></div>
+      </div>
       <p class="footnote">Nährwerte sind Schätzwerte aus Durchschnittsdaten oder KI-Erkennung. Für Trends gedacht, nicht grammgenau.</p>
     </section>
 
     <!-- ================= WELT ================= -->
     <section class="panel" data-panel="stadt">
+      <div class="seg seg-wide district-seg" id="districtSeg"></div>
       <div class="card city-hero">
         <svg class="city-canvas" id="cityCanvas" viewBox="0 0 420 260" preserveAspectRatio="xMidYMid meet"></svg>
         <div class="city-bar">
@@ -586,6 +614,13 @@
   </div>
 </div>
 
+<div class="sheet-wrap" id="infoOverlay">
+  <div class="sheet">
+    <div class="sheet-head"><h3 id="infoSheetTitle">Info</h3><button class="icon-btn" id="infoSheetClose" aria-label="Schließen"><i data-ic="x"></i></button></div>
+    <div id="infoSheetBody"></div>
+  </div>
+</div>
+
 <div class="sheet-wrap" id="histOverlay">
   <div class="sheet">
     <div class="sheet-head"><h3>Alle Messungen</h3><button class="icon-btn" id="histClose" aria-label="Schließen"><i data-ic="x"></i></button></div>
@@ -611,6 +646,8 @@
   </div>
 </div>
 
+<div id="printArea" aria-hidden="true"></div>
+
 <script src="js/icons.js"></script>
 <script src="js/core.js"></script>
 <script src="js/tracker.js"></script>
@@ -620,6 +657,7 @@
 <script src="js/game.js"></script>
 <script src="js/city.js"></script>
 <script src="js/report.js"></script>
+<script src="js/bpreport.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/app.js"></script>
 </body>

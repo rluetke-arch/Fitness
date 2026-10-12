@@ -17,10 +17,18 @@ const buildCatalog = [
   { id:"stadion",  name:"Stadion",   ico:"trophy",          color:"green",  cost:2500, tier:5, pop:0,   joy:5,  d:"Eine Arena unter Flutlicht, die alle begeistert." },
   { id:"rathaus",  name:"Rathaus",   ico:"landmark",        color:"amber",  cost:4000, tier:5, pop:30,  joy:3,  d:"Mit Uhrturm, das Herz der Verwaltung." },
   { id:"monument", name:"Monument",  ico:"tower-control",   color:"violet", cost:6000, tier:6, pop:0,   joy:6,  d:"Ein Wahrzeichen mit Leuchtfeuer." },
+  { id:"markt",    name:"Markthalle",ico:"store",           color:"amber",  cost:3000, tier:5, pop:20,  joy:4,  d:"Frisches Essen unter einem gläsernen Dach." },
+  { id:"leucht",   name:"Leuchtturm",ico:"lighthouse",      color:"rose",   cost:5000, tier:6, pop:0,   joy:4,  d:"Sein Lichtstrahl führt die Schiffe in den Hafen.", only:1 },
+  { id:"rad",      name:"Riesenrad", ico:"ferris-wheel",    color:"violet", cost:7000, tier:6, pop:0,   joy:7,  d:"Dreht sich langsam über den Dächern." },
+];
+const districts = [
+  { name:"Innenstadt",  ico:"building" },
+  { name:"Hafen",       ico:"anchor" },
+  { name:"Grünviertel", ico:"trees" },
 ];
 const LOTS = 12, LOT_W = 33, LOT_X0 = 12;
 let city = { name:"Neustadt", spent:0, buildings:[] };
-let pendingLot = null, citySig = "";
+let pendingLot = null, citySig = "", activeDistrict = 0;
 
 function loadCity(){
   const c2 = store.get("rf:city2");
@@ -29,6 +37,33 @@ function loadCity(){
   if (!Array.isArray(city.buildings)) city.buildings = [];
   if (typeof city.spent !== "number") city.spent = 0;
   if (!city.name) city.name = "Neustadt";
+  city.buildings.forEach(b=>{ if (b.d == null) b.d = 0; });
+  if (typeof city.unlocked !== "number") city.unlocked = 0;
+  updateUnlocks(false);
+  activeDistrict = Math.min(city.view || 0, city.unlocked);
+}
+function districtCount(d){ return city.buildings.filter(b=>b.d===d).length; }
+// Ein Bezirk wird frei, sobald der vorherige komplett bebaut ist. Einmal frei, bleibt er frei.
+function updateUnlocks(announce){
+  let changed = false;
+  while (city.unlocked < districts.length-1 && districtCount(city.unlocked) >= LOTS){
+    city.unlocked++; changed = true;
+    if (announce) toast("Neuer Bezirk freigeschaltet: " + districts[city.unlocked].name, districts[city.unlocked].ico);
+  }
+  if (changed) saveCityData();
+  return changed;
+}
+function hasFreeLot(){ for (let d=0; d<=city.unlocked; d++) if (districtCount(d) < LOTS) return true; return false; }
+function renderDistrictSeg(){
+  $("districtSeg").innerHTML = districts.map((d,i)=>{
+    const locked = i > city.unlocked;
+    return `<button data-d="${i}" class="${i===activeDistrict?"active":""} ${locked?"locked":""}">${icon(locked?"lock":d.ico)}${d.name}</button>`;
+  }).join("");
+  $("districtSeg").querySelectorAll("button").forEach(b=>b.addEventListener("click", ()=>{
+    const i = +b.dataset.d;
+    if (i > city.unlocked){ toast(districts[i].name + " wird frei, wenn " + districts[i-1].name + " komplett bebaut ist", "lock"); return; }
+    activeDistrict = i; city.view = i; saveCityData(); renderCity();
+  }));
 }
 function saveCityData(){ store.set("rf:city2", city); }
 
@@ -53,7 +88,7 @@ function basePopulation(p){
   if (!next) return Math.round(cur.pop * (1 + (p-cur.p)/cur.p*0.5));
   return Math.round(cur.pop + (next.pop-cur.pop)*((p-cur.p)/(next.p-cur.p)));
 }
-function buildingAt(lot){ return city.buildings.find(b=>b.lot===lot) || null; }
+function buildingAt(lot, d=activeDistrict){ return city.buildings.find(b=>b.lot===lot && b.d===d) || null; }
 function joyScore(){
   const j = city.buildings.reduce((a,b)=>{ const t=buildCatalog.find(x=>x.id===b.type); return a+(t?t.joy:0); },0);
   return Math.max(5, Math.min(100, 50 + j*4));
@@ -146,18 +181,19 @@ function renderCity(){
   const joyIc = joy>=80?"face-grinning":joy>=60?"face-slightly-smiling":joy>=40?"face-neutral":"face-slightly-frowning";
   $("cityStats").innerHTML = [
     ["users","blue", pop.toLocaleString("de-DE"), "Einwohner"],
-    ["hammer","amber", city.buildings.length + " von " + LOTS, "Grundstücke bebaut"],
+    ["hammer","amber", districtCount(activeDistrict) + " von " + LOTS, "bebaut in " + districts[activeDistrict].name],
     [joyIc,"green", joy + " %", "Zufriedenheit"],
     ["coins","violet", city.spent.toLocaleString("de-DE"), "Baupunkte verbaut"],
   ].map(([i,c,v,l])=>`<div class="cstat"><span class="chip-ic ${c}">${icon(i)}</span><div><b>${v}</b><small>${l}</small></div></div>`).join("");
 
   const sig = [ti, Math.min(22,3+Math.floor(earned/500)), Math.min(16,2+Math.floor(earned/900)), Math.min(9,1+Math.floor(earned/1200)),
-    earned>=2800, earned>=13000, earned>=26000, JSON.stringify(city.buildings.map(b=>b.lot+b.type))].join("|");
-  if (sig !== citySig){ citySig = sig; drawCity(earned, ti); }
+    earned>=2800, earned>=13000, earned>=26000, activeDistrict, JSON.stringify(city.buildings.filter(b=>b.d===activeDistrict).map(b=>b.lot+b.type))].join("|");
+  renderDistrictSeg();
+  if (sig !== citySig){ citySig = sig; drawCity(earned, ti, activeDistrict); }
   checkCityMilestone(ti);
 }
 
-function drawCity(earned, ti){
+function drawCity(earned, ti, dist){
   const W=420, H=260, g=212;
   const skyTop = ["#0a0820","#0c0a26","#0f0c2c","#120e33","#16113b","#1a1443","#1e164b","#221953","#261b5b","#2a1e63"][Math.min(ti,9)];
   let s = `<defs>
@@ -177,7 +213,18 @@ function drawCity(earned, ti){
   const far = Math.min(22, 3+Math.floor(earned/500));
   for (let i=0;i<far;i++){ const bw=16+rnd(i*13)*16, x=(i/far)*W+rnd(i*17)*10, bh=16+rnd(i*19)*Math.min(70, 14+earned/300);
     s += `<rect x="${x.toFixed(1)}" y="${(g-26-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="url(#farG)" opacity=".85"/>`; }
-  const mid = Math.min(16, 2+Math.floor(earned/900));
+  const mid = dist===2 ? 0 : Math.min(16, 2+Math.floor(earned/900));
+  if (dist===1){ // Containerkräne am Horizont
+    for (let i=0;i<4;i++){ const cx=40+i*105+rnd(i*5)*20, top=g-90-rnd(i*3)*25;
+      s += `<path d="M${cx} ${g-12} V${top} M${cx-4} ${g-12} V${top+6} M${cx-30} ${top+4} H${cx+45} M${cx} ${top} L${cx-30} ${top+4} M${cx} ${top} L${cx+45} ${top+4} M${cx+30} ${top+4} v14" stroke="#2b3066" stroke-width="2.4" fill="none"/>
+        <rect x="${cx+26}" y="${top+18}" width="8" height="5" fill="#2b3066"/><circle cx="${cx}" cy="${top-2}" r="1.6" fill="#ff4f7b"><animate attributeName="opacity" values="1;.2;1" dur="${2+i*.4}s" repeatCount="indefinite"/></circle>`; }
+  }
+  if (dist===2){ // Hügel und Bäume
+    s += `<path d="M0 ${g-40} Q60 ${g-95} 140 ${g-55} T290 ${g-70} T420 ${g-48} V${g} H0 Z" fill="#17263a"/>
+      <path d="M0 ${g-20} Q90 ${g-60} 200 ${g-28} T420 ${g-35} V${g} H0 Z" fill="#183128"/>`;
+    for (let i=0;i<26;i++){ const tx=rnd(i*13)*W, ty=g-22-rnd(i*7)*28, r=3+rnd(i*3)*4;
+      s += `<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="${r.toFixed(1)}" fill="${rnd(i)>.5?"#1f4a36":"#24573f"}"/>`; }
+  }
   for (let i=0;i<mid;i++){ const bw=20+rnd(i*23)*18, x=(i/mid)*W+rnd(i*29)*12, bh=22+rnd(i*31)*Math.min(95, 20+earned/220);
     s += `<rect x="${x.toFixed(1)}" y="${(g-12-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="#20244f" opacity=".95"/>`;
     if (rnd(i*7)>.5) s += `<rect x="${(x+bw*.3).toFixed(1)}" y="${(g-12-bh-5).toFixed(1)}" width="2" height="5" fill="#2b3066"/>`; }
@@ -190,13 +237,25 @@ function drawCity(earned, ti){
         <rect x="${x+4}" y="${g-15}" width="25" height="13" rx="3" fill="none" stroke="#8c6bff" stroke-width="1" stroke-dasharray="3.5 3"/>
         <path d="M${x+16.5} ${g-12} v7 M${x+13} ${g-8.5} h7" stroke="#8c6bff" stroke-width="1.4" stroke-linecap="round"/></g>`;
   }
-  s += `<rect x="0" y="${g+8}" width="${W}" height="11" fill="#1a1c3d"/>`;
-  for (let i=0;i<14;i++) s += `<rect x="${i*32+6}" y="${g+13}" width="15" height="1.4" fill="#454a8c" opacity=".8"/>`;
-  const cars = Math.min(9, 1+Math.floor(earned/1200));
-  for (let i=0;i<cars;i++){ const col=["#58a6ff","#ffb547","#ff4f7b","#2de2c2"][i%4];
+  if (dist===1){ // Kai und Wasser mit Booten
+    s += `<rect x="0" y="${g+4}" width="${W}" height="${H-g-4}" fill="#0f2a3d"/>`;
+    for (let i=0;i<3;i++) s += `<path d="M0 ${g+12+i*12} q10 -3 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0" stroke="#2de2c2" stroke-opacity="${.18-i*.04}" fill="none"><animateTransform attributeName="transform" type="translate" values="0 0;-20 0" dur="${3+i}s" repeatCount="indefinite"/></path>`;
+    const boats = Math.min(5, 1+Math.floor(earned/4000));
+    for (let i=0;i<boats;i++){ const y=g+18+(i%3)*10, col=["#e6e0ff","#ffb547","#58a6ff"][i%3];
+      s += `<g><path d="M0 ${y} h16 l-3 4 h-10 Z" fill="${col}"/><path d="M8 ${y-1} V${y-12} L15 ${y-2} Z" fill="#e6e0ff" opacity=".85"/>
+        <animateTransform attributeName="transform" type="translate" from="${i%2?W+20:-20} 0" to="${i%2?-20:W+20} 0" dur="${(22+rnd(i*7)*14).toFixed(1)}s" begin="-${(rnd(i*9)*20).toFixed(1)}s" repeatCount="indefinite"/></g>`; }
+  } else {
+  s += `<rect x="0" y="${g+8}" width="${W}" height="11" fill="${dist===2?"#1d2a24":"#1a1c3d"}"/>`;
+  if (dist===0) for (let i=0;i<14;i++) s += `<rect x="${i*32+6}" y="${g+13}" width="15" height="1.4" fill="#454a8c" opacity=".8"/>`;
+  const cars = dist===2 ? Math.min(5, 1+Math.floor(earned/3000)) : Math.min(9, 1+Math.floor(earned/1200));
+  if (dist===2) for (let i=0;i<cars;i++){ // Radfahrer
+    s += `<g><circle cx="2" cy="${g+15}" r="2.2" fill="none" stroke="#2de2c2" stroke-width=".9"/><circle cx="9" cy="${g+15}" r="2.2" fill="none" stroke="#2de2c2" stroke-width=".9"/><path d="M2 ${g+15} L5 ${g+11} L9 ${g+15} M5 ${g+11} L6 ${g+8}" stroke="#e6e0ff" stroke-width=".9" fill="none"/><circle cx="6" cy="${g+7}" r="1.2" fill="#e6e0ff"/>
+      <animateTransform attributeName="transform" type="translate" from="-14 0" to="${W+10} 0" dur="${(14+rnd(i*23)*8).toFixed(1)}s" begin="-${(rnd(i*29)*12).toFixed(1)}s" repeatCount="indefinite"/></g>`; }
+  else for (let i=0;i<cars;i++){ const col=["#58a6ff","#ffb547","#ff4f7b","#2de2c2"][i%4];
     s += `<g><rect x="0" y="${g+9.5}" width="9.5" height="4.6" rx="1.6" fill="${col}"/><circle cx="2.4" cy="${g+14.4}" r="1.2" fill="#0d0b14"/><circle cx="7.2" cy="${g+14.4}" r="1.2" fill="#0d0b14"/>
       <animateTransform attributeName="transform" type="translate" from="-14 0" to="${W+10} 0" dur="${(6+rnd(i*23)*6).toFixed(1)}s" begin="-${(rnd(i*29)*6).toFixed(1)}s" repeatCount="indefinite"/></g>`; }
-  if (earned>=2800) s += `<g><rect x="0" y="${g-1}" width="32" height="9" rx="2" fill="#8c6bff"/><rect x="3" y="${g+1}" width="5" height="3.4" fill="#fff3d6" opacity=".9"/><rect x="10" y="${g+1}" width="5" height="3.4" fill="#fff3d6" opacity=".9"/><rect x="17" y="${g+1}" width="5" height="3.4" fill="#fff3d6" opacity=".9"/>
+  }
+  if (earned>=2800 && dist===0) s += `<g><rect x="0" y="${g-1}" width="32" height="9" rx="2" fill="#8c6bff"/><rect x="3" y="${g+1}" width="5" height="3.4" fill="#fff3d6" opacity=".9"/><rect x="10" y="${g+1}" width="5" height="3.4" fill="#fff3d6" opacity=".9"/><rect x="17" y="${g+1}" width="5" height="3.4" fill="#fff3d6" opacity=".9"/>
     <animateTransform attributeName="transform" type="translate" from="-34 0" to="${W+12} 0" dur="12s" repeatCount="indefinite"/></g>`;
   if (earned>=13000) s += `<g><path d="M0 0 L14 0 L18 -2 L14 2 L0 2 Z M6 0 L3 -5 L8 0 M6 2 L3 6 L8 2" fill="#e6e0ff"/><circle cx="17" cy="0" r="1" fill="#ff4f7b"><animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/></circle>
     <animateMotion path="M -24 60 Q ${W/2} 34 ${W+24} 52" dur="15s" repeatCount="indefinite"/></g>`;
@@ -211,15 +270,40 @@ function drawCity(earned, ti){
     if (b) openInfoSheet(lot, b); else openBuildSheet(lot);
   }));
 }
+/* Zusatzgebäude */
+Object.assign(drawB, {
+  markt(x,g){ let w="";
+    for (let c=0;c<5;c++) w += `<rect x="${x+4+c*5.2}" y="${g-14}" width="3.6" height="7" fill="#fff3d6" opacity="${(.55+rnd(c+x)*.4).toFixed(2)}"/>`;
+    let st=""; for (let c=0;c<7;c++) st += `<rect x="${x+2+c*4.2}" y="${g-20}" width="4.2" height="3" fill="${c%2?"#ff4f7b":"#f4f2f9"}"/>`;
+    return `<rect x="${x+1}" y="${g-20}" width="31" height="20" fill="#2a2f63" stroke="#3f4590" stroke-width=".6"/>
+      <path d="M${x} ${g-20} Q${x+16.5} ${g-38} ${x+33} ${g-20} Z" fill="#363c7a" stroke="#4a51a0" stroke-width=".6"/>
+      <path d="M${x+8} ${g-22} Q${x+16.5} ${g-32} ${x+25} ${g-22}" stroke="#58a6ff" stroke-opacity=".6" fill="none"/>${st}${w}
+      <rect x="${x+14}" y="${g-6}" width="5" height="6" fill="#14162e"/>`; },
+  leucht(x,g){ return `
+    <polygon points="${x+12},${g} ${x+21},${g} ${x+19},${g-50} ${x+14},${g-50}" fill="#f4f2f9"/>
+    <polygon points="${x+12.6},${g-12} ${x+20.4},${g-12} ${x+20},${g-22} ${x+13},${g-22}" fill="#ff4f7b"/>
+    <polygon points="${x+13.4},${g-32} ${x+19.6},${g-32} ${x+19.3},${g-41} ${x+13.7},${g-41}" fill="#ff4f7b"/>
+    <rect x="${x+13}" y="${g-56}" width="7" height="6" fill="#ffe9a8"/><path d="M${x+12} ${g-56} L${x+16.5} ${g-61} L${x+21} ${g-56} Z" fill="#ff4f7b"/>
+    <g transform="translate(${x+16.5} ${g-53})"><path d="M0 0 L70 -9 L70 9 Z" fill="#ffe9a8" opacity=".22"><animateTransform attributeName="transform" type="rotate" values="-40;40;-40" dur="7s" repeatCount="indefinite"/></path></g>
+    <circle cx="${x+16.5}" cy="${g-53}" r="2.4" fill="#fff8d6"><animate attributeName="opacity" values="1;.5;1" dur="1.6s" repeatCount="indefinite"/></circle>`; },
+  rad(x,g){ const cx=x+16.5, cy=g-33, r=15; let sp="", gd="";
+    for (let k=0;k<8;k++){ const a=k*Math.PI/4, ex=(cx+r*Math.cos(a)).toFixed(1), ey=(cy+r*Math.sin(a)).toFixed(1);
+      sp += `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="#8c6bff" stroke-width=".7"/>`;
+      gd += `<rect x="${(ex-2).toFixed(1)}" y="${(+ey).toFixed(1)}" width="4" height="3.4" rx="1" fill="${["#ffb547","#2de2c2","#ff4f7b","#58a6ff"][k%4]}"/>`; }
+    return `<path d="M${cx} ${cy} L${x+7} ${g} M${cx} ${cy} L${x+26} ${g}" stroke="#3f4590" stroke-width="2"/>
+      <g><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#b3a0ff" stroke-width="1.2"/><circle cx="${cx}" cy="${cy}" r="${r-4}" fill="none" stroke="#8c6bff" stroke-width=".5" opacity=".6"/>${sp}${gd}
+        <animateTransform attributeName="transform" type="rotate" from="0 ${cx} ${cy}" to="360 ${cx} ${cy}" dur="40s" repeatCount="indefinite"/></g>
+      <circle cx="${cx}" cy="${cy}" r="2" fill="#f4f2f9"/>`; },
+});
 
 /* ---------- Bauen ---------- */
 bindSheet("cityOverlay","citySheetClose");
 function openBuildSheet(lot){
   pendingLot = lot;
   const earned = earnedBP(), avail = availableBP(), ti = tierFor(earned);
-  $("citySheetTitle").textContent = "Grundstück " + (lot+1) + " bebauen";
+  $("citySheetTitle").textContent = districts[activeDistrict].name + ", Grundstück " + (lot+1);
   $("citySheetBody").innerHTML = `<p class="muted small">Du hast <b style="color:var(--amber)">${avail.toLocaleString("de-DE")} Baupunkte</b>. Deine Stufe: ${cityTiers[ti].name}.</p>
-    <div class="build-grid">${buildCatalog.map(t=>{
+    <div class="build-grid">${buildCatalog.filter(t=>t.only==null || t.only===activeDistrict).map(t=>{
       const lockedTier = ti < t.tier, lockedCost = avail < t.cost;
       const lockLab = lockedTier ? "ab Stufe " + cityTiers[t.tier].name : lockedCost ? "noch " + (t.cost-avail).toLocaleString("de-DE") + " BP" : "";
       const eff = [t.pop?`+${t.pop} Einwohner`:"", t.joy?`${t.joy>0?"+":"−"}${Math.abs(t.joy)} Stimmung`:""].filter(Boolean).join(", ");
@@ -233,9 +317,10 @@ function buildOnLot(typeId){
   const t = buildCatalog.find(x=>x.id===typeId);
   if (!t || pendingLot==null || availableBP() < t.cost || buildingAt(pendingLot)) return;
   city.spent += t.cost;
-  city.buildings.push({ lot: pendingLot, type: t.id, ts: Date.now() });
+  city.buildings.push({ lot: pendingLot, d: activeDistrict, type: t.id, ts: Date.now() });
   saveCityData(); closeSheet("cityOverlay"); pendingLot = null;
   toast(t.name + " gebaut", t.ico);
+  if (updateUnlocks(false)) setTimeout(()=>toast("Neuer Bezirk freigeschaltet: " + districts[city.unlocked].name, districts[city.unlocked].ico), 3300);
   renderCity(); refreshGame();
 }
 function openInfoSheet(lot, b){
@@ -247,7 +332,7 @@ function openInfoSheet(lot, b){
     <div class="sheet-actions"><button class="btn btn-danger" id="demolishBtn">Abreißen, ${refund.toLocaleString("de-DE")} BP zurück</button>
       <button class="btn btn-ghost" id="infoCloseBtn">Schließen</button></div>`;
   $("demolishBtn").addEventListener("click", ()=>{
-    city.buildings = city.buildings.filter(x=>x.lot!==lot);
+    city.buildings = city.buildings.filter(x=>!(x.lot===lot && x.d===activeDistrict));
     city.spent = Math.max(0, city.spent - refund);
     saveCityData(); closeSheet("cityOverlay");
     toast("Abgerissen, " + refund.toLocaleString("de-DE") + " Baupunkte zurück", "hammer");

@@ -120,7 +120,7 @@ const questPool = [
   { id:"weigh",    title:"Wiegen",                    target:()=>1,    cur:()=>weights[todayKey()]!=null ? 1 : 0 },
   { id:"chest",    title:"Eine Truhe öffnen",         target:()=>1,    cur:()=>game.chestDay===todayKey() ? 1 : 0 },
   { id:"build",    title:"Etwas in deiner Welt bauen",target:()=>1,    cur:()=>city.buildings.some(b=>b.ts && dateKey(new Date(b.ts))===todayKey()) ? 1 : 0,
-    when:()=>availableBP()>=100 && city.buildings.length < LOTS },
+    when:()=>availableBP()>=100 && hasFreeLot() },
 ];
 function hashStr(s){ let h=2166136261; for (const c of s){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h>>>0; }
 function todaysQuests(){
@@ -271,8 +271,12 @@ const badgeCats = [
     { ico:"dumbbell", name:"Erste Stunde", t:60 }, { ico:"flame", name:"Fünf Stunden", t:300 }, { ico:"bike", name:"Zwanzig Stunden", t:1200 } ], unit:"Trainingsminuten" },
   { cat:"Schritte", color:"#2de2c2", val:()=>sumSteps(), items:[
     { ico:"footprints", name:"100.000 Schritte", t:100000 }, { ico:"mountain", name:"Halbe Million", t:500000 }, { ico:"map-pin", name:"Eine Million", t:1000000 } ], unit:"Schritte" },
+  { cat:"Zielgewicht", color:"#3ddc84", val:()=>{ const w=weightGoalInfo(); return w.pct!=null && w.entries.length>=2 ? w.pct : 0; }, items:[
+    { ico:"scale", name:"Ein Viertel", t:25 }, { ico:"target", name:"Halbzeit", t:50 }, { ico:"flag", name:"Fast da", t:75 },
+    { ico:"party-popper", name:"Ziel erreicht", t:100 } ], unit:"% des Wegs" },
   { cat:"Welt", color:"#ffb547", val:()=>city.buildings.length, items:[
-    { ico:"house", name:"Grundstein", t:1 }, { ico:"building", name:"Halbe Stadt", t:6 }, { ico:"landmark", name:"Ausgebaut", t:12 } ], unit:"Gebäude" },
+    { ico:"house", name:"Grundstein", t:1 }, { ico:"building", name:"Halbe Innenstadt", t:6 }, { ico:"landmark", name:"Erster Bezirk", t:12 },
+    { ico:"anchor", name:"Zwei Bezirke", t:24 }, { ico:"ferris-wheel", name:"Ganze Welt", t:36 } ], unit:"Gebäude" },
 ];
 function allBadges(){
   return badgeCats.flatMap(c=>{ const v = c.val()||0; return c.items.map((b,i)=>({ ...b, id:c.cat+"#"+i, cat:c.cat, color:c.color, unit:c.unit, v, earned: v>=b.t })); });

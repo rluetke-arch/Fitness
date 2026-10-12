@@ -20,6 +20,70 @@ $("saveSteps").addEventListener("click", ()=>{
   else flashMsg("stepsMsg","Aktualisiert");
   renderSteps(); onDataChanged();
 });
+/* ---------- Schritte aus Apple Health (Kurzbefehl über die Zwischenablage) ---------- */
+// Akzeptiert eine einzelne Zahl (= heute) oder Zeilen mit Datum und Zahl, z. B. "12.10.2026: 8.412" oder "2026-10-12 8412".
+function parseStepsText(text){
+  const out = {};
+  const clean = String(text||"").trim();
+  if (!clean) return out;
+  const toInt = s => parseInt(String(s).trim().replace(/[.,]\d{1,2}$/,"").replace(/[.\s,]/g,""), 10);
+  if (/^[\d.\s,]+$/.test(clean)){ const n = toInt(clean); if (n>=0 && n<200000) out[todayKey()] = n; return out; }
+  clean.split(/[\n;]+/).forEach(line=>{
+    let m = line.match(/(\d{4})-(\d{1,2})-(\d{1,2})\D+([\d.,\s]+)/), key = null, val = null;
+    if (m){ key = `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`; val = m[4]; }
+    else if ((m = line.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})\D+([\d.,\s]+)/))){
+      const y = m[3].length===2 ? "20"+m[3] : m[3];
+      key = `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`; val = m[4];
+    }
+    if (key){ const n = toInt(val); if (n>=0 && n<200000 && key <= todayKey()) out[key] = n; }
+  });
+  return out;
+}
+function importSteps(map, source){
+  const keys = Object.keys(map).sort();
+  if (!keys.length){ flashMsg("stepsMsg", "Keine Schrittzahl gefunden. Lass zuerst den Kurzbefehl laufen.", true); return false; }
+  let newDays = 0;
+  keys.forEach(k=>{ if (steps[k] === undefined) newDays++; steps[k] = Math.max(steps[k]||0, map[k]); });
+  saveSteps();
+  if (newDays) addXp(STEPS_XP*newDays, "Schritte");
+  const today = map[todayKey()];
+  flashMsg("stepsMsg", (today!=null ? today.toLocaleString("de-DE") + " Schritte für heute übernommen" : keys.length + " Tage übernommen")
+    + (keys.length>1 && today!=null ? ", dazu " + (keys.length-1) + " weitere Tage" : "") + (newDays ? ", +" + STEPS_XP*newDays + " XP" : ""));
+  renderSteps(); onDataChanged();
+  return true;
+}
+$("pasteSteps").addEventListener("click", async ()=>{
+  let text = "";
+  try { text = await navigator.clipboard.readText(); }
+  catch(e){ text = prompt("Füg hier die Schrittzahl aus dem Kurzbefehl ein:") || ""; }
+  importSteps(parseStepsText(text));
+});
+// Für den Aufruf aus Safari: ...?steps=8412
+function importStepsFromUrl(){
+  const q = new URLSearchParams(location.search);
+  if (!q.has("steps")) return;
+  const map = parseStepsText(q.get("steps"));
+  history.replaceState(null, "", location.pathname + location.hash);
+  if (importSteps(map)) showPanel("fitness");
+}
+function openShortcutHelp(){
+  $("infoSheetTitle").textContent = "Schritte aus Apple Health";
+  $("infoSheetBody").innerHTML = `
+    <p class="muted small">Einmal einrichten, danach reichen zwei Tipps: Kurzbefehl starten, dann in der App „Aus Health einfügen“.</p>
+    <ol class="steps-guide">
+      <li>Öffne die App <b>Kurzbefehle</b> und tippe auf <b>+</b>.</li>
+      <li>Füge die Aktion <b>Health-Beispiele suchen</b> hinzu. Stell ein: Typ <b>Schritte</b>, Startdatum <b>ist heute</b>, Gruppieren nach <b>Tag</b>.</li>
+      <li>Füge <b>Statistik berechnen</b> hinzu und wähle <b>Summe</b>.</li>
+      <li>Füge <b>In Zwischenablage kopieren</b> hinzu.</li>
+      <li>Nenn den Kurzbefehl zum Beispiel „Schritte für Rauchfrei“. Beim ersten Start fragt das iPhone, ob er Health lesen darf: Erlauben.</li>
+    </ol>
+    <p class="muted small">„Gruppieren nach Tag“ sorgt dafür, dass Schritte von iPhone und Watch nicht doppelt gezählt werden. Tipp: Leg den Kurzbefehl als Widget auf den Home-Bildschirm.</p>
+    <p class="muted small">Du kannst auch mehrere Tage auf einmal einfügen, eine Zeile pro Tag, etwa „11.10.2026: 9.120“.</p>`;
+  openSheet("infoOverlay");
+}
+$("shortcutHelp").addEventListener("click", openShortcutHelp);
+bindSheet("infoOverlay","infoSheetClose");
+
 function renderSteps(){
   const today = steps[todayKey()] || 0, goal = stepGoal(), pct = Math.min(1, today/goal);
   $("stepsToday").textContent = today.toLocaleString("de-DE");

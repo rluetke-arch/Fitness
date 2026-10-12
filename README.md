@@ -11,7 +11,7 @@ Live: https://rluetke-arch.github.io/Fitness/
 | --- | --- |
 | Heute | Spielerkarte (Level, Serie, Baupunkte, Trophäen), Tagesquests, Kacheln, Tagesanalyse |
 | Körper | Vitalwerte mit Tiefenanalyse, Training (Schritte, Einheiten), Ernährung (Budget, Foto-Erkennung, Gewicht) |
-| Welt | Stadtaufbau mit Baupunkten |
+| Welt | Stadtaufbau mit Baupunkten in drei Bezirken (Innenstadt, Hafen, Grünviertel) |
 | Erfolge | Level, Truhen, Tagesbonus, Serie, Trophäen |
 | Mehr | Rauchfrei, Alkohol, Finanzen, Einstellungen, Daten sichern |
 
@@ -35,6 +35,7 @@ js/nutrition.js         Kalorienbudget, Mahlzeiten, Foto-Erkennung, Gewicht
 js/game.js              XP, Level, Serie, Quests, Truhen, Trophäen, Notfall-Knopf
 js/city.js              Stadtaufbau
 js/report.js            Wochenrückblick
+js/bpreport.js          Blutdruck-Bericht für die Arztpraxis (Druck und Datei)
 js/backup.js            Export und Import
 js/app.js               Navigation, Takt, Start
 sw.js                   Service Worker (Netz zuerst, offline aus dem Cache)
@@ -44,3 +45,10 @@ Kein Build-Schritt: Änderungen auf `main` sind nach dem Pages-Deploy (etwa eine
 Der Service Worker lädt online immer die neueste Version, es muss also nichts neu installiert werden.
 
 Schrift: Manrope (SIL Open Font License, `fonts/OFL-Manrope.txt`). Icons: Lucide (ISC, `js/LICENSE-lucide.txt`).
+
+## Schritte aus Apple Health
+
+Home-Bildschirm-Apps haben auf dem iPhone einen eigenen Speicher, getrennt von Safari. Deshalb läuft der Import über die Zwischenablage:
+Ein Kurzbefehl („Health-Beispiele suchen“ → „Statistik berechnen: Summe“ → „In Zwischenablage kopieren“) kopiert die Schrittzahl,
+in der App fügt **Körper → Training → Aus Health einfügen** sie ein. Akzeptiert wird eine Zahl (heute) oder Zeilen wie `11.10.2026: 9.120`.
+In Safari funktioniert zusätzlich `?steps=8412` in der Adresse.

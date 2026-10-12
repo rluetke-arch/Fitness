@@ -69,6 +69,7 @@ renderVitals(); renderSteps(); renderSessions(); renderBodyStats(); renderBeerDe
 renderFinTable(); renderGoals(); renderXpTable(); renderBackupMeta();
 renderAnalysis(); renderCity(); refreshGame();
 showPanel((location.hash||"").slice(1) || "uebersicht");
+importStepsFromUrl();
 maybeShowWeekReport();
 
 setInterval(()=>{

@@ -48,7 +48,8 @@ function saveConfig(){
   store.set("rf:config", { start:startEl.value, perDay:perEl.value, price:priceEl.value, why:whyEl.value,
     weight:weightEl.value, height:heightEl.value, age:ageEl.value, stepGoal:stepGoalEl.value, sex:userSex,
     alcStart:alcStartEl.value, alcPerWeek:alcPerWeekEl.value, alcCrate:alcCrateEl.value, alcKcal100:alcKcalEl.value,
-    nutriGoal:nutriGoalAdj, nutriTarget:$("nutriTarget").value });
+    nutriGoal:nutriGoalAdj, nutriTarget:$("nutriTarget").value,
+    reportName:$("reportName").value, wTarget:$("wTarget").value });
 }
 function loadConfig(){
   const d = store.get("rf:config"); if (!d) return;
@@ -68,6 +69,7 @@ function loadConfig(){
   if (d.alcKcal100) alcKcalEl.value = d.alcKcal100;
   if (typeof d.nutriGoal === "number") nutriGoalAdj = d.nutriGoal;
   if (d.nutriTarget) $("nutriTarget").value = d.nutriTarget;
+  if (d.wTarget) $("wTarget").value = d.wTarget;
 }
 function stepGoal(){ return parseInt(stepGoalEl.value) || 8000; }
 

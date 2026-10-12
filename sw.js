@@ -1,9 +1,9 @@
 /* Service Worker: lädt online immer die neueste Version (Netz zuerst)
    und fällt offline auf die zuletzt gespeicherte Kopie zurück. */
-const CACHE = "rauchfrei-v1";
+const CACHE = "rauchfrei-v2";
 const CORE = ["./", "index.html", "css/app.css", "manifest.webmanifest", "fonts/manrope.woff",
   "js/icons.js", "js/core.js", "js/tracker.js", "js/health.js", "js/fitness.js", "js/nutrition.js",
-  "js/game.js", "js/city.js", "js/report.js", "js/backup.js", "js/app.js",
+  "js/game.js", "js/city.js", "js/report.js", "js/bpreport.js", "js/backup.js", "js/app.js",
   "icons/icon-192.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
