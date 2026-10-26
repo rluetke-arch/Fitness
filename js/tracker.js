@@ -1,9 +1,9 @@
-/* Rauchfrei- und Alkohol-Zähler, Ersparnis, Lebenszeit, Sparziele */
+/* Rauchfrei-Zähler, Anläufe und Neustart, Ersparnis, Lebenszeit, Wunschliste */
 "use strict";
 
 const PUFFS_PER_VAPE = 600;
-const BOTTLES_PER_CRATE = 24, BOTTLE_ML = 330;
 const MIN_PER_UNIT_PER_DAY = 60; // Modellannahme: Minuten Lebenserwartung je Vape/Tag und rauchfreiem Tag
+const DAY_MS = 86400000;
 
 const milestones = [
   { mins: 20,        title: "Puls und Blutdruck sinken", desc: "Nach 20 Minuten bewegen sich Herzfrequenz und Blutdruck Richtung Normalwert." },
@@ -23,33 +23,16 @@ const milestones = [
   { mins: 60*24*270, title: "Die Flimmerhärchen sind erholt", desc: "Die Lunge reinigt sich wieder selbst, du wirst seltener krank." },
   { mins: 60*24*365, title: "Ein Jahr: Herzrisiko halbiert", desc: "Dein Risiko für koronare Herzkrankheit ist etwa halb so hoch wie mit Nikotin." },
 ];
-const alcMilestones = [
-  { mins: 60*12,     title: "Restalkohol abgebaut", desc: "Blutzucker und Flüssigkeitshaushalt normalisieren sich, die Leber arbeitet den Rest ab." },
-  { mins: 60*24,     title: "Tag 1: klarer Kopf", desc: "Der Körper ist alkoholfrei, der Magen beruhigt sich." },
-  { mins: 60*72,     title: "Die Umstellung ist geschafft", desc: "Unruhe und schlechter Schlaf der ersten Nächte klingen bei moderatem Konsum meist ab." },
-  { mins: 60*24*7,   title: "Besserer Schlaf", desc: "Die Tiefschlafphasen normalisieren sich, du wachst erholter auf. Die Haut wirkt frischer." },
-  { mins: 60*24*14,  title: "Magen und Leber atmen auf", desc: "Die Magenschleimhaut erholt sich, die Leber beginnt eingelagertes Fett abzubauen." },
-  { mins: 60*24*28,  title: "Messbar weniger Leberfett", desc: "Nach einem Monat zeigen Studien rund 15 % weniger Leberfett. Blutdruck und Gewicht sinken häufig mit." },
-  { mins: 60*24*42,  title: "Bessere Blutwerte", desc: "Leberwerte wie die GGT verbessern sich, beim nächsten Blutbild sichtbar." },
-  { mins: 60*24*90,  title: "Die Leber hat sich erholt", desc: "Ohne Vorschäden ist die Leber weitgehend regeneriert, das Immunsystem arbeitet stabiler." },
-  { mins: 60*24*180, title: "Ein neues Normal", desc: "Mehr Energie, stabileres Gewicht, besseres Hautbild." },
-  { mins: 60*24*365, title: "Ein Jahr alkoholfrei", desc: "Deutlich geringeres Risiko für Bluthochdruck, Herz-Kreislauf-Erkrankungen und einige Krebsarten." },
-];
 
 const startEl = $("startDate"), perEl = $("perDay"), priceEl = $("price"), whyEl = $("whyText");
-const weightEl = $("weight"), heightEl = $("height"), ageEl = $("age"), stepGoalEl = $("stepGoal");
-const alcStartEl = $("alcStart"), alcPerWeekEl = $("alcPerWeek"), alcCrateEl = $("alcCrate"), alcKcalEl = $("alcKcal100");
-let userSex = null, nutriGoalAdj = 0;
-const state = { days:0, savedNow:0, future:true, dayRate:0, hoursFrac:0, absMs:0,
-  alcActive:false, alcFuture:true, alcDays:0, alcSaved:0, alcDayRate:0, alcHours:0, totalSaved:0 };
+const state = { hasStart:false, future:true, curMs:0, days:0, pastMs:0, freeMs:0, dayRate:0, totalSaved:0, vapes:0 };
 
 /* ---------- Konfiguration ---------- */
 function saveConfig(){
-  store.set("rf:config", { start:startEl.value, perDay:perEl.value, price:priceEl.value, why:whyEl.value,
-    weight:weightEl.value, height:heightEl.value, age:ageEl.value, stepGoal:stepGoalEl.value, sex:userSex,
-    alcStart:alcStartEl.value, alcPerWeek:alcPerWeekEl.value, alcCrate:alcCrateEl.value, alcKcal100:alcKcalEl.value,
-    nutriGoal:nutriGoalAdj, nutriTarget:$("nutriTarget").value,
-    reportName:$("reportName").value, wTarget:$("wTarget").value });
+  // Zusammenführen, damit andere Felder (z. B. reportName) erhalten bleiben
+  const c = store.get("rf:config") || {};
+  Object.assign(c, { start:startEl.value, perDay:perEl.value, price:priceEl.value, why:whyEl.value });
+  store.set("rf:config", c);
 }
 function loadConfig(){
   const d = store.get("rf:config"); if (!d) return;
@@ -57,26 +40,73 @@ function loadConfig(){
   if (d.perDay) perEl.value = d.perDay;
   if (d.price) priceEl.value = d.price;
   if (d.why) whyEl.value = d.why;
-  if (d.weight) weightEl.value = d.weight;
-  if (d.height) heightEl.value = d.height;
-  if (d.age) ageEl.value = d.age;
-  if (d.stepGoal) stepGoalEl.value = d.stepGoal;
-  if (d.sex) userSex = d.sex;
-  if (d.alcStart) alcStartEl.value = d.alcStart;
-  if (d.alcPerWeek) alcPerWeekEl.value = d.alcPerWeek;
-  if (d.alcCrate) alcCrateEl.value = d.alcCrate;
-  else if (d.alcPrice) alcCrateEl.value = (parseFloat(d.alcPrice)*BOTTLES_PER_CRATE).toFixed(2);
-  if (d.alcKcal100) alcKcalEl.value = d.alcKcal100;
-  if (typeof d.nutriGoal === "number") nutriGoalAdj = d.nutriGoal;
-  if (d.nutriTarget) $("nutriTarget").value = d.nutriTarget;
-  if (d.wTarget) $("wTarget").value = d.wTarget;
 }
-function stepGoal(){ return parseInt(stepGoalEl.value) || 8000; }
+function perDay(){ return parseFloat(perEl.value)||0; }
+function vapePrice(){ return parseFloat(priceEl.value)||0; }
+function currentStart(){
+  if (!startEl.value) return null;
+  const t = new Date(startEl.value).getTime();
+  return isNaN(t) ? null : t;
+}
+// "2026-10-26T14:05" für datetime-local in Ortszeit
+function toLocalInput(ms){ const d = new Date(ms); return dateKey(d) + "T" + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"); }
 
-/* ---------- Zeitleisten ---------- */
-function buildMilestoneList(boxId, list, cls){
-  $(boxId).innerHTML = list.map((m,i)=>`
-    <div class="milestone ${cls}" data-mi="${i}">
+/* ---------- Frühere Anläufe ---------- */
+// Jeder Neustart legt den beendeten Anlauf ab: { start, end } in Millisekunden
+let attempts = [];
+function loadAttempts(){ attempts = (store.get("rf:attempts") || []).filter(a=>a && a.end > a.start); }
+function saveAttempts(){ store.set("rf:attempts", attempts); }
+// Alle rauchfreien Zeiträume inklusive des laufenden
+function freeIntervals(){
+  const list = attempts.map(a=>({ start:a.start, end:a.end }));
+  const s = currentStart(); if (s != null) list.push({ start:s, end:Infinity });
+  return list;
+}
+function longestStreakMs(){ return Math.max(state.curMs, ...attempts.map(a=>a.end-a.start), 0); }
+function liveFreeMs(now=Date.now()){ const s = currentStart(); return state.pastMs + (s!=null && now>s ? now-s : 0); }
+function liveSaved(now=Date.now()){ return liveFreeMs(now)/DAY_MS * perDay() * vapePrice(); }
+
+function openRestart(){
+  const cur = currentStart();
+  $("infoSheetTitle").textContent = "Neuer Anlauf";
+  $("infoSheetBody").innerHTML = `
+    <p class="muted small">Das passiert jedem, der aufhört. Wichtig ist nur, dass du weitermachst. Dein Zähler startet neu, aber nichts geht verloren:
+    Die bisher gesparten ${fmtEuro(liveSaved())}, deine Abzeichen und deine längste Strecke bleiben.</p>
+    <label class="field" style="margin-top:14px"><span>Neuer Start</span><input type="datetime-local" id="restartAt" value="${toLocalInput(Date.now())}"></label>
+    <div class="msg" id="restartMsg"></div>
+    <div class="sos-actions">
+      <button class="btn btn-primary" id="restartGo">Neuen Anlauf starten</button>
+      <button class="btn btn-ghost" id="restartCancel">Abbrechen</button>
+    </div>`;
+  openSheet("infoOverlay");
+  $("restartCancel").onclick = ()=>closeSheet("infoOverlay");
+  $("restartGo").onclick = ()=>{
+    const at = new Date($("restartAt").value).getTime();
+    if (isNaN(at)) return flashMsg("restartMsg", "Wähl einen Zeitpunkt.", true);
+    if (at > Date.now() + 60000) return flashMsg("restartMsg", "Der Neustart kann nicht in der Zukunft liegen.", true);
+    if (cur != null && at <= cur) return flashMsg("restartMsg", "Der Neustart muss nach deinem bisherigen Start liegen.", true);
+    if (cur != null) { attempts.push({ start:cur, end:at }); saveAttempts(); }
+    startEl.value = toLocalInput(at); saveConfig();
+    closeSheet("infoOverlay");
+    tick(); onDataChanged();
+    toast("Neuer Anlauf gestartet", "sprout");
+  };
+}
+function undoRestart(){
+  const last = attempts[attempts.length-1]; if (!last) return;
+  if (!confirm(`Den Neustart vom ${new Date(last.end).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} Uhr zurücknehmen? Dein Zähler läuft dann wieder ab ${new Date(last.start).toLocaleDateString("de-DE")}.`)) return;
+  attempts.pop(); saveAttempts();
+  startEl.value = toLocalInput(last.start); saveConfig();
+  tick(); onDataChanged();
+  toast("Neustart zurückgenommen", "circle-check");
+}
+$("restartBtn").addEventListener("click", openRestart);
+$("undoRestart").addEventListener("click", undoRestart);
+
+/* ---------- Zeitleiste ---------- */
+function buildMilestoneList(){
+  $("timeline").innerHTML = milestones.map((m,i)=>`
+    <div class="milestone" data-mi="${i}">
       <div class="ms-rail"><div class="ms-dot"></div><div class="ms-line"></div></div>
       <div class="ms-body">
         <div class="ms-when">${labelFor(m.mins)}</div>
@@ -86,10 +116,10 @@ function buildMilestoneList(boxId, list, cls){
       </div>
     </div>`).join("");
 }
-function updateMilestones(cls, list, minsElapsed, future){
+function updateMilestones(minsElapsed, future){
   let nextMarked = false;
-  document.querySelectorAll(".milestone."+cls).forEach(el=>{
-    const mi = list[+el.dataset.mi], eta = el.querySelector(".ms-eta");
+  document.querySelectorAll("#timeline .milestone").forEach(el=>{
+    const mi = milestones[+el.dataset.mi], eta = el.querySelector(".ms-eta");
     const done = !future && minsElapsed >= mi.mins;
     el.classList.toggle("done", done);
     const isNext = !done && !nextMarked && !future;
@@ -99,6 +129,23 @@ function updateMilestones(cls, list, minsElapsed, future){
     if (eta.textContent !== t) eta.textContent = t;
   });
 }
+function renderNextMilestone(minsElapsed){
+  const box = $("nextMs");
+  if (!state.hasStart || state.future){ box.hidden = true; return; }
+  box.hidden = false;
+  const idx = milestones.findIndex(m=>m.mins > minsElapsed);
+  let html;
+  if (idx < 0){
+    html = `<div class="nm-top"><span class="chip-ic teal">${icon("trophy")}</span><div class="nm-txt"><small>Alle Meilensteine erreicht</small><b>Über ein Jahr rauchfrei</b></div></div>`;
+  } else {
+    const m = milestones[idx], prev = idx ? milestones[idx-1].mins : 0;
+    const pct = Math.max(0, Math.min(100, (minsElapsed-prev)/(m.mins-prev)*100));
+    html = `<div class="nm-top"><span class="chip-ic violet">${icon("sprout")}</span>
+      <div class="nm-txt"><small>Nächster Meilenstein, noch ${remaining(m.mins - minsElapsed)}</small><b>${m.title}</b></div>${icon("chevron-right")}</div>
+      <div class="bar bar-brand"><span style="width:${pct.toFixed(1)}%"></span></div>`;
+  }
+  if (box._html !== html){ box.innerHTML = html; box._html = html; }
+}
 
 /* ---------- Sekundentakt ---------- */
 function splitDur(absMs){
@@ -106,83 +153,32 @@ function splitDur(absMs){
   return { totalSec, d:Math.floor(totalSec/86400), h:Math.floor((totalSec%86400)/3600), m:Math.floor((totalSec%3600)/60), s:totalSec%60 };
 }
 function tick(){
-  const now = new Date();
-  const start = startEl.value ? new Date(startEl.value) : null;
-  const perDay = parseFloat(perEl.value)||0, price = parseFloat(priceEl.value)||0;
-  const hasStart = start && !isNaN(start);
-  $("notStarted").hidden = !!hasStart;
+  const now = Date.now(), start = currentStart(), hasStart = start != null;
+  $("notStarted").hidden = hasStart;
   $("sosBtn").hidden = !hasStart;
-
-  if (hasStart){
-    const ms = now - start, future = ms < 0, absMs = Math.abs(ms);
-    const t = splitDur(absMs);
-    $("cD").textContent=t.d; $("cH").textContent=t.h; $("cM").textContent=t.m; $("cS").textContent=t.s;
-    $("dayBig").textContent = t.d;
-    $("dayBigLabel").textContent = future ? "Tage bis zum Start" : plural(t.d,"Tag rauchfrei","Tage rauchfrei");
-    $("ring").style.strokeDashoffset = 276.5 * (1 - (future ? 0 : (t.totalSec%86400)/86400));
-    $("dayBigTile").textContent = future ? "–" : t.d;
-    $("clockTile").textContent = future ? "startet bald" : `${t.h} Std ${t.m} Min`;
-
-    const daysElapsed = future ? 0 : absMs/86400000;
-    const vapesAvoided = daysElapsed * perDay, saved = vapesAvoided * price;
-    $("vapesAvoided").textContent = fmtN(vapesAvoided,1);
-    $("puffsAvoided").textContent = Math.round(vapesAvoided*PUFFS_PER_VAPE).toLocaleString("de-DE");
-    Object.assign(state, { days: future?0:t.d, savedNow:saved, future, dayRate:perDay*price,
-      hoursFrac: future?0:(absMs/3600000) - t.d*24, absMs: future?0:absMs });
-    updateMilestones("vape-ms", milestones, future ? 0 : absMs/60000, future);
-    renderLife(absMs, future);
-  } else {
-    Object.assign(state, { days:0, savedNow:0, future:true, dayRate:0, hoursFrac:0, absMs:0 });
-    $("dayBigTile").textContent = "–"; $("clockTile").textContent = "nicht gestartet";
-  }
-
-  updateAlcohol(now);
-  state.totalSaved = state.savedNow + state.alcSaved;
-  $("finVapeSaved").textContent = fmtEuro(state.savedNow);
-  $("finAlcSaved").textContent = fmtEuro(state.alcSaved);
-  $("ovSaved").textContent = state.totalSaved >= 1000 ? fmtEuro0(state.totalSaved) : fmtEuro(state.totalSaved);
-  $("ovRate").textContent = fmtEuro(state.dayRate + state.alcDayRate) + " pro Tag";
-  lastTickMs = Date.now();
-}
-
-function updateAlcohol(now){
-  const active = !!alcStartEl.value && !isNaN(new Date(alcStartEl.value));
-  state.alcActive = active;
-  $("alcNotSet").hidden = active;
-  $("alcContent").hidden = !active;
-  if (!active){
-    Object.assign(state, { alcFuture:true, alcDays:0, alcSaved:0, alcDayRate:0, alcHours:0 });
-    $("alcDayTile").textContent = "–"; $("alcDayTileLab").textContent = ""; $("alcClockTile").textContent = "nicht gestartet";
-    return;
-  }
-  const ms = now - new Date(alcStartEl.value), future = ms < 0, absMs = Math.abs(ms);
+  const ms = hasStart ? now - start : 0, future = ms < 0, absMs = Math.abs(ms);
   const t = splitDur(absMs);
-  const perWeek = parseFloat(alcPerWeekEl.value)||0;
-  const bottlePrice = (parseFloat(alcCrateEl.value)||0)/BOTTLES_PER_CRATE;
-  const kcalPerBottle = (parseFloat(alcKcalEl.value)||42) * BOTTLE_ML/100;
-  const bottlesAvoided = (future ? 0 : absMs/86400000) * perWeek/7;
-  Object.assign(state, { alcFuture:future, alcDays: future?0:t.d, alcHours: future?0:absMs/3600000,
-    alcDayRate: perWeek*bottlePrice/7, alcSaved: bottlesAvoided*bottlePrice });
+  state.pastMs = attempts.reduce((a,x)=>a + (x.end - x.start), 0);
+  Object.assign(state, { hasStart, future, curMs: future ? 0 : absMs, days: future ? 0 : t.d, dayRate: perDay()*vapePrice() });
+  state.freeMs = state.pastMs + state.curMs;
+  state.vapes = state.freeMs/DAY_MS * perDay();
+  state.totalSaved = state.vapes * vapePrice();
 
-  $("aD").textContent=t.d; $("aH").textContent=t.h; $("aM").textContent=t.m; $("aS").textContent=t.s;
-  $("alcDayBig").textContent = t.d;
-  $("alcDayLabel").textContent = future ? "Tage bis zum Start" : plural(t.d,"Tag alkoholfrei","Tage alkoholfrei");
-  $("alcRing").style.strokeDashoffset = 276.5 * (1 - (future ? 0 : (t.totalSec%86400)/86400));
-  $("alcSavedStat").textContent = fmtEuro(state.alcSaved);
-  $("alcDrinksStat").textContent = fmtN(bottlesAvoided,1);
-  $("alcCratesStat").textContent = fmtN(bottlesAvoided/BOTTLES_PER_CRATE,2);
-  $("alcKcalStat").textContent = Math.round(bottlesAvoided*kcalPerBottle).toLocaleString("de-DE");
-  $("alcDayTile").textContent = future ? "–" : t.d;
-  $("alcDayTileLab").textContent = future ? "" : plural(t.d,"Tag","Tage");
-  $("alcClockTile").textContent = future ? "startet bald" : `${t.h} Std ${t.m} Min`;
-  updateMilestones("alc-ms", alcMilestones, future ? 0 : absMs/60000, future);
+  $("cD").textContent=t.d; $("cH").textContent=t.h; $("cM").textContent=t.m; $("cS").textContent=t.s;
+  $("dayBig").textContent = hasStart ? t.d : 0;
+  $("dayBigLabel").textContent = !hasStart ? "noch nicht gestartet" : future ? "Tage bis zum Start" : plural(t.d,"Tag rauchfrei","Tage rauchfrei");
+  $("ring").style.strokeDashoffset = 276.5 * (1 - (future || !hasStart ? 0 : (t.totalSec%86400)/86400));
+  $("vapesAvoided").textContent = fmtN(state.vapes,1);
+  $("puffsAvoided").textContent = Math.round(state.vapes*PUFFS_PER_VAPE).toLocaleString("de-DE");
+  const mins = state.curMs/60000;
+  updateMilestones(mins, future || !hasStart);
+  renderNextMilestone(mins);
+  renderLife();
 }
 
 /* ---------- Lebenszeit ---------- */
-function lifeMinutes(){ return (state.absMs/86400000) * (parseFloat(perEl.value)||0) * MIN_PER_UNIT_PER_DAY; }
-function renderLife(absMs, future){
-  const perDay = parseFloat(perEl.value)||0;
-  const minsRegained = future ? 0 : (absMs/86400000) * perDay * MIN_PER_UNIT_PER_DAY;
+function renderLife(){
+  const minsRegained = state.freeMs/DAY_MS * perDay() * MIN_PER_UNIT_PER_DAY;
   let sec = Math.floor(minsRegained*60);
   const y = Math.floor(sec/(365.25*86400)); sec -= Math.floor(y*365.25*86400);
   const d = Math.floor(sec/86400); sec -= d*86400;
@@ -191,67 +187,94 @@ function renderLife(absMs, future){
   $("lifeY").textContent=y; $("lifeD").textContent=d; $("lifeH").textContent=h; $("lifeM").textContent=m; $("lifeS").textContent=s;
   const lifeDays = minsRegained/1440;
   $("ovLife").textContent = lifeDays >= 1 ? fmtN(lifeDays,1) + " Tage" : minsRegained >= 60 ? fmtN(minsRegained/60,1) + " Std" : Math.round(minsRegained) + " Min";
-  const perYear = Math.round(perDay*MIN_PER_UNIT_PER_DAY*365.25/1440*10)/10;
-  const note = future ? "Startet mit deinem ersten rauchfreien Tag."
-    : `Grobe Modellrechnung: etwa ${fmtN(perYear,1)} Tage pro rauchfreiem Jahr bei deinem früheren Konsum. Keine individuelle Prognose.`;
+  const perYear = Math.round(perDay()*MIN_PER_UNIT_PER_DAY*365.25/1440*10)/10;
+  const note = state.freeMs <= 0 ? "Startet mit deinem ersten rauchfreien Tag."
+    : `Grobe Modellrechnung über deine gesamte rauchfreie Zeit: etwa ${fmtN(perYear,1)} Tage pro rauchfreiem Jahr bei deinem früheren Konsum. Eine Schätzung, keine individuelle Prognose.`;
   if ($("lifeNote").textContent !== note) $("lifeNote").textContent = note;
 }
 
-/* ---------- Finanzen ---------- */
-let lastTickMs = Date.now();
-function renderFinanceLive(){
-  const rate = state.dayRate + state.alcDayRate;
-  if (rate <= 0 || ((state.future) && (!state.alcActive || state.alcFuture))){
-    $("moneySaved").textContent = fmtEuro(state.totalSaved);
-    $("finLive").textContent = "Startet mit deinem ersten Tag";
-    return;
-  }
-  const saved = state.totalSaved + (Date.now() - lastTickMs)/1000 * rate/86400;
-  $("moneySaved").textContent = fmtEuro(saved);
-  $("finLive").textContent = "+ " + saved.toLocaleString("de-DE",{minimumFractionDigits:5,maximumFractionDigits:5}) + " €, live";
+/* ---------- Ersparnis live ---------- */
+function renderMoneyLive(){
+  const saved = liveSaved(), rate = state.dayRate;
+  const big = fmtEuro(saved);
+  const fine = rate <= 0 ? "Trag Konsum und Preis in den Einstellungen ein"
+    : !state.hasStart || state.future ? "Startet mit deinem ersten rauchfreien Moment"
+    : saved.toLocaleString("de-DE",{minimumFractionDigits:5,maximumFractionDigits:5}) + " €, zählt live mit";
+  document.querySelectorAll(".panel.active .live-money").forEach(el=>{ if (el.textContent !== big) el.textContent = big; });
+  document.querySelectorAll(".panel.active .live-money-fine").forEach(el=>{ if (el.textContent !== fine) el.textContent = fine; });
 }
 function renderFinTable(){
-  const vr = state.dayRate, ar = state.alcDayRate, tr = vr+ar;
-  const row = (name,r,cls="") => `<tr class="${cls}"><td>${name}</td><td>${fmtEuro(r)}</td><td>${fmtEuro(r*7)}</td><td>${fmtEuro0(r*365.25/12)}</td><td>${fmtEuro0(r*365.25)}</td></tr>`;
-  $("finTable").innerHTML = `<tr><th></th><th>Tag</th><th>Woche</th><th>Monat</th><th>Jahr</th></tr>`
-    + row("Vape",vr) + row("Alkohol",ar) + row("Gesamt",tr,"total");
-}
-function renderBeerDerived(){
-  const crate = parseFloat(alcCrateEl.value)||0, kcal100 = parseFloat(alcKcalEl.value)||0;
-  const items = [];
-  if (crate>0) items.push(bsCell("Preis pro Flasche", fmtEuro(crate/BOTTLES_PER_CRATE)));
-  if (kcal100>0) items.push(bsCell("kcal pro Flasche", Math.round(kcal100*BOTTLE_ML/100)+" kcal"));
-  if (kcal100>0) items.push(bsCell("kcal pro Kiste", Math.round(kcal100*BOTTLE_ML/100*BOTTLES_PER_CRATE).toLocaleString("de-DE")+" kcal"));
-  $("beerDerived").innerHTML = items.join("");
+  const r = state.dayRate, per = perDay();
+  $("rateDay").textContent = fmtEuro(r);
+  $("rateMonth").textContent = fmtEuro0(r*365.25/12);
+  const rows = [["In einer Woche",7],["In einem Monat",365.25/12],["In einem Jahr",365.25],["In 5 Jahren",365.25*5],["In 10 Jahren",365.25*10]];
+  $("finTable").innerHTML = `<tr><th>Zeitraum</th><th>Ersparnis</th><th>Vapes</th></tr>` +
+    rows.map(([lab,days],i)=>`<tr class="${i===4?"total":""}"><td>${lab}</td><td>${days<40?fmtEuro(r*days):fmtEuro0(r*days)}</td><td>${fmtN(per*days,0)}</td></tr>`).join("");
 }
 
-/* ---------- Sparziele ---------- */
+/* ---------- Wunschliste ---------- */
+// rf:goals: [{ name, cost, done?, doneTs? }] – ältere Einträge ohne done gelten als offen
 let goals = [];
-function loadGoals(){ goals = store.get("rf:goals") || []; }
+function loadGoals(){ goals = (store.get("rf:goals") || []).map(g=>({ name:g.name, cost:+g.cost||0, done:!!g.done, doneTs:g.doneTs||null })); }
 function saveGoals(){ store.set("rf:goals", goals); }
+function spentOnWishes(){ return goals.filter(g=>g.done).reduce((a,g)=>a+g.cost,0); }
+function availableMoney(){ return Math.max(0, liveSaved() - spentOnWishes()); }
 $("addGoal").addEventListener("click", ()=>{
   const name=$("goalName").value.trim(), cost=parseFloat($("goalCost").value);
   if (!name || !cost || cost<=0) return;
-  goals.push({name,cost}); goals.sort((a,b)=>a.cost-b.cost); saveGoals();
-  $("goalName").value=""; $("goalCost").value=""; renderGoals();
+  goals.push({ name, cost, done:false, doneTs:null }); saveGoals();
+  $("goalName").value=""; $("goalCost").value=""; renderGoals(); renderTodayWish();
 });
+function wishMeta(g, avail){
+  const daily = state.dayRate, missing = g.cost - avail;
+  if (missing <= 0) return `<span class="reached">Du kannst es dir gönnen</span><span>${fmtEuro(g.cost)}</span>`;
+  const dl = daily>0 ? Math.ceil(missing/daily) : null;
+  return `<span>${fmtEuro(avail)} von ${fmtEuro(g.cost)}</span><span>${dl!=null ? "noch etwa "+dl+" "+plural(dl,"Tag","Tage") : ""}</span>`;
+}
 function renderGoals(){
-  const box=$("goalList");
-  if (!goals.length){ box.innerHTML='<p class="empty">Gib deinem gesparten Geld ein Ziel, zum Beispiel einen Kurztrip.</p>'; return; }
-  const saved=state.totalSaved, daily=state.dayRate + state.alcDayRate;
-  box.innerHTML = goals.map((g,i)=>{
-    const pct=Math.min(100,(saved/g.cost)*100), done=saved>=g.cost;
-    const dl = daily>0 ? Math.ceil((g.cost-saved)/daily) : null;
-    const meta = done ? `<span class="reached">Erreicht, gönn es dir</span><span>${fmtEuro(g.cost)}</span>`
-      : `<span>${fmtEuro(saved)} von ${fmtEuro(g.cost)}</span><span>${dl!=null?"noch etwa "+dl+" "+plural(dl,"Tag","Tage"):""}</span>`;
-    return `<div class="goal"><div class="goal-top"><span class="goal-name">${escapeHtml(g.name)}</span><span class="muted small">${Math.floor(pct)} %<button class="del" data-i="${i}" aria-label="Ziel löschen">${icon("trash")}</button></span></div>
-      <div class="bar ${done?"bar-teal":"bar-amber"}"><span style="width:${pct}%"></span></div><div class="goal-meta">${meta}</div></div>`;
-  }).join("");
-  box.querySelectorAll(".del").forEach(b=>b.addEventListener("click",()=>{ goals.splice(+b.dataset.i,1); saveGoals(); renderGoals(); }));
+  const avail = availableMoney(), spent = spentOnWishes();
+  $("wishAvail").textContent = spent > 0
+    ? `Verfügbar: ${fmtEuro(avail)}. Für erfüllte Wünsche hast du schon ${fmtEuro(spent)} ausgegeben.`
+    : "Gib deinem gesparten Geld ein Ziel. Wenn der Balken voll ist, gönn es dir und hak es ab.";
+  const open = goals.map((g,i)=>({g,i})).filter(x=>!x.g.done).sort((a,b)=>a.g.cost-b.g.cost);
+  $("wishList").innerHTML = open.length ? open.map(({g,i})=>{
+    const pct = Math.min(100, avail/g.cost*100), ready = avail >= g.cost;
+    return `<div class="goal"><div class="goal-top"><span class="goal-name">${escapeHtml(g.name)}</span>
+      <span class="muted small">${Math.floor(pct)} %<button class="del" data-del="${i}" aria-label="Wunsch löschen">${icon("trash")}</button></span></div>
+      <div class="bar ${ready?"bar-teal":"bar-amber"}"><span style="width:${pct}%"></span></div><div class="goal-meta">${wishMeta(g, avail)}</div>
+      ${ready ? `<button class="btn btn-primary btn-sm wish-go" data-done="${i}">${icon("gift")}Ich gönn es mir</button>` : ""}</div>`;
+  }).join("") : "";
+  const done = goals.map((g,i)=>({g,i})).filter(x=>x.g.done).sort((a,b)=>(b.g.doneTs||0)-(a.g.doneTs||0));
+  $("wishDone").innerHTML = done.length ? `<div class="badge-cat">Gegönnt</div>` + done.map(({g,i})=>`<div class="row">
+      <span class="r-ic">${icon("circle-check")}</span>
+      <span class="r-main"><b>${escapeHtml(g.name)}</b><small>${g.doneTs ? new Date(g.doneTs).toLocaleDateString("de-DE") : ""}</small></span>
+      <span class="r-val">${fmtEuro(g.cost)}</span>
+      <button class="del" data-undo="${i}" aria-label="Wieder offen">${icon("x")}</button></div>`).join("") : "";
+  document.querySelectorAll("#wishList [data-del]").forEach(b=>b.addEventListener("click",()=>{
+    if (!confirm("Diesen Wunsch löschen?")) return;
+    goals.splice(+b.dataset.del,1); saveGoals(); renderGoals(); renderTodayWish();
+  }));
+  document.querySelectorAll("#wishList [data-done]").forEach(b=>b.addEventListener("click",()=>{
+    const g = goals[+b.dataset.done]; g.done = true; g.doneTs = Date.now(); saveGoals();
+    toast("Gönn es dir, du hast es dir verdient", "gift"); renderGoals(); renderTodayWish(); onDataChanged();
+  }));
+  document.querySelectorAll("#wishDone [data-undo]").forEach(b=>b.addEventListener("click",()=>{
+    const g = goals[+b.dataset.undo]; g.done = false; g.doneTs = null; saveGoals(); renderGoals(); renderTodayWish(); onDataChanged();
+  }));
+}
+function renderTodayWish(){
+  const avail = availableMoney();
+  const open = goals.filter(g=>!g.done).sort((a,b)=>a.cost-b.cost)[0];
+  if (!open){ $("todayWish").innerHTML = ""; return; }
+  const pct = Math.min(100, avail/open.cost*100);
+  $("todayWish").innerHTML = `<button class="card next-ms" data-goto="geld"><div class="nm-top"><span class="chip-ic amber">${icon("gift")}</span>
+    <div class="nm-txt"><small>Nächster Wunsch, ${Math.floor(pct)} %</small><b>${escapeHtml(open.name)}</b></div>${icon("chevron-right")}</div>
+    <div class="bar ${pct>=100?"bar-teal":"bar-amber"}"><span style="width:${pct}%"></span></div><div class="goal-meta">${wishMeta(open, avail)}</div></button>`;
+  $("todayWish").querySelector("[data-goto]").addEventListener("click", ()=>showPanel("geld"));
 }
 
 /* ---------- Eingaben ---------- */
-[startEl, perEl, priceEl, alcStartEl, alcPerWeekEl, alcCrateEl, alcKcalEl].forEach(el => el.addEventListener("input", ()=>{
-  saveConfig(); tick(); renderBeerDerived(); renderFinTable(); renderGoals();
+[startEl, perEl, priceEl].forEach(el => el.addEventListener("input", ()=>{
+  saveConfig(); tick(); renderFinTable(); renderGoals(); renderTodayWish(); onDataChanged();
 }));
 whyEl.addEventListener("input", saveConfig);

@@ -8,8 +8,9 @@ const store = {
   del(k){ try { localStorage.removeItem(k); } catch(e){} }
 };
 // Alle Schlüssel, die zur App gehören (für Reset und Backup)
-const DATA_KEYS = ["rf:config","rf:vitals","rf:goals","rf:sos","rf:game","rf:steps","rf:sessions",
-  "rf:city","rf:city2","rf:cityseen","rf:meals","rf:weights","rf:weekseen","rf:badgeseen"];
+const DATA_KEYS = ["rf:config","rf:vitals","rf:goals","rf:sos","rf:cravings","rf:attempts","rf:badgeseen"];
+// Schlüssel entfernter Bereiche (Alkohol, Welt, XP, Training, Ernährung): werden nur beim Zurücksetzen gelöscht
+const LEGACY_KEYS = ["rf:game","rf:steps","rf:sessions","rf:city","rf:city2","rf:cityseen","rf:meals","rf:weights","rf:weekseen","rf:apikey"];
 
 /* ---------- Datum (immer lokale Zeit, nicht UTC) ---------- */
 function dateKey(d){
@@ -74,7 +75,7 @@ function flashMsg(id, text, err){
   clearTimeout(el._t); el._t = setTimeout(()=>{ if (el.textContent===text) el.textContent=""; }, err ? 5000 : 3500);
 }
 function toast(text, ic="sparkles"){
-  const el = $("cityToast"); el.innerHTML = icon(ic) + "<span>" + escapeHtml(text) + "</span>"; el.classList.add("show");
+  const el = $("toast"); el.innerHTML = icon(ic) + "<span>" + escapeHtml(text) + "</span>"; el.classList.add("show");
   try { if (navigator.vibrate) navigator.vibrate(25); } catch(e){}
   clearTimeout(toast._t); toast._t = setTimeout(()=>el.classList.remove("show"), 3200);
 }

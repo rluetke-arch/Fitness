@@ -1,6 +1,6 @@
 # Rauchfrei – Hinweise für Claude Code
 
-Persönliche Web-App (PWA) eines deutschsprachigen Nutzers, der mit dem Vapen (1,5 Vapes/Tag à 12,50 €) und mit Bier aufhört.
+Persönliche Web-App (PWA) eines deutschsprachigen Nutzers, der mit dem Vapen aufhört (1,5 Vapes/Tag à 12,50 €). Die App ist rein aufs Rauchfreisein ausgerichtet.
 Live auf GitHub Pages: https://rluetke-arch.github.io/Fitness/ – jeder Push auf `main` ist nach etwa einer Minute live.
 Der Nutzer nutzt die App als Home-Bildschirm-App auf dem iPhone (Safari).
 
@@ -17,26 +17,30 @@ Der Nutzer nutzt die App als Home-Bildschirm-App auf dem iPhone (Safari).
 - Schrift Manrope (lokal in `fonts/`), große leichte Zahlen (font-weight 200–400).
 - **Keine Emojis** in der Oberfläche. Icons kommen aus `js/icons.js` (Lucide-Pfade, Aufruf `icon("name")` oder `<i data-ic="name">`).
   Neue Icons: SVG-Pfad aus dem Lucide-Repo (github.com/lucide-icons/lucide, Ordner `icons/`) in das `ICONS`-Objekt übernehmen.
-- Bottom-Tab-Leiste: Heute, Körper (Vitalwerte/Training/Ernährung), Welt, Erfolge, Mehr.
+- Bottom-Tab-Leiste: Heute, Verlangen, Geld, Erfolge, Mehr (Erholung, Blutdruck, Einstellungen, Daten sichern).
 
 ## Daten
 - Alles in `localStorage`, Schlüssel mit Präfix `rf:` (Liste in `DATA_KEYS` in `js/core.js`). Daten sind an die Adresse gebunden.
 - Datenformate niemals brechen; bei Änderungen eine Migration in der jeweiligen `load…()`-Funktion schreiben.
   Neue Schlüssel in `DATA_KEYS` aufnehmen, damit sie im Backup landen (`js/backup.js`, Format `{app:"rauchfrei", version:1, data:{…}}`).
-- `rf:apikey` (Anthropic-Schlüssel für die Foto-Erkennung) gehört nie ins Backup und nie in den Code.
+- Wichtige Schlüssel: `rf:config` (Start = laufender Anlauf), `rf:attempts` (frühere Anläufe `{start,end}` in ms),
+  `rf:cravings` (`{ts, level, triggers, slip}`), `rf:goals` (Wunschliste mit `done`), `rf:sos` (alter Zähler, zählt als überstanden mit).
+- Schlüssel entfernter Bereiche stehen in `LEGACY_KEYS` und werden nur beim Zurücksetzen gelöscht.
 - Datumsschlüssel immer in Ortszeit über `dateKey()`/`todayKey()` aus `js/core.js`, nie `toISOString()`.
 
-## Gamification (in `js/game.js`)
-- XP mit Tagesgrenzen gegen Mehrfacheinträge, Level (100 + 50·(n−1) XP), jedes Level +100 Baupunkte.
-- Tagesquests (3 pro Tag, deterministisch aus dem Datum), Bonus bei 3/3, Aktivitäts-Serie, Tagesbonus nach Kalendertag, Truhen alle 30 Min.
-- Trophäen in `badgeCats` (Schwellenwerte, neue werden automatisch erkannt und mit XP belohnt).
-- Welt (`js/city.js`): Baupunkte-Währung, 3 Bezirke à 12 Grundstücke, neuer Bezirk nach vollem Vorgänger. Die Stadt wird nie zerstört.
+## Bewusst entfernt (Okt. 2026)
+- Alkohol, Welt/Stadt, XP/Level/Quests/Truhen, Training, Schritte, Ernährung und Gewicht. Nicht wieder einbauen, ohne zu fragen.
+- Schritte aus Apple Health: Eine Web-App kann Health nicht lesen, und Home-Bildschirm-Apps haben auf dem iPhone einen eigenen
+  Speicher getrennt von Safari. Manuelles Eintragen wollte der Nutzer nicht.
+
+## Fortschritt (in `js/erfolge.js`)
+- Schlichte Abzeichen in `badgeCats` ohne Punkte; einmal erreichte bleiben über `rf:badgeseen` auch nach einem Neustart erhalten.
+- Ein Ausrutscher (`slip`) lässt den Zähler weiterlaufen. „Neu starten“ legt den Anlauf in `rf:attempts` ab;
+  Ersparnis, Lebenszeit und Gesamtzeit zählen über alle Anläufe, die längste Strecke bleibt.
 
 ## Inhaltliche Leitplanken
 - Gesundheitsangaben immer als Orientierung kennzeichnen, keine Diagnosen. Blutdruck-Einstufung nach ESC/ESH, Grenzwert Selbstmessung 135/85.
-- Alkohol: Hinweis auf ärztliche Begleitung bei starkem täglichem Konsum beibehalten.
-- Kalorien- und Lebenszeit-Werte sind Schätzungen und so beschriftet.
+- Lebenszeit-Werte sind Schätzungen und so beschriftet.
 
 ## Offene Ideen
-- Rückfall-Funktion mit fairem Neustart (Zähler zurück, Stadt/Level/Trophäen bleiben).
-- Schritte-Kurzbefehl auf dem echten iPhone verifizieren (Aktionsnamen).
+- Erinnerungen oder Mitteilungen bei Meilensteinen (iOS-Web-Push bräuchte einen Server).

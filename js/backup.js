@@ -8,7 +8,7 @@ function collectBackup(){
 }
 function renderBackupMeta(){
   const last = store.get("rf:lastbackup");
-  const n = vitals.length + Object.keys(steps).length + sessions.length + Object.values(meals).reduce((a,l)=>a+l.length,0) + Object.keys(weights).length;
+  const n = vitals.length + cravings.length + goals.length + attempts.length;
   const ago = last ? Math.floor((Date.now()-new Date(last))/86400000) : null;
   $("backupMeta").textContent = `${n.toLocaleString("de-DE")} Einträge auf diesem Gerät. ` +
     (last ? `Letztes Backup: ${new Date(last).toLocaleDateString("de-DE",{day:"2-digit",month:"long",year:"numeric"})}.` : "Noch kein Backup erstellt.");

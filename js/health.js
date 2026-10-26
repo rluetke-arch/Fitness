@@ -1,8 +1,7 @@
-/* Vitalwerte, Bewertung, Tagesanalyse, Tiefenanalyse, Körperdaten */
+/* Blutdruck: Messungen, Bewertung, Verlauf, Auswertung */
 "use strict";
 
 let vitals = [], activeSlot = "morgens";
-const VITAL_XP = 15, VITAL_XP_PER_DAY = 2; // XP nur für die ersten 2 Messungen pro Tag
 const sysEl=$("sys"), diaEl=$("dia"), pulseEl=$("pulse"), dateEl=$("measureDate");
 
 function loadVitals(){ vitals = store.get("rf:vitals") || []; }
@@ -13,14 +12,12 @@ $("saveVital").addEventListener("click", ()=>{
   const sys=parseInt(sysEl.value), dia=parseInt(diaEl.value), pulse=parseInt(pulseEl.value), date=dateEl.value;
   if (!date) return flashMsg("viMsg","Wähl ein Datum.", true);
   if (!sys && !dia && !pulse) return flashMsg("viMsg","Trag mindestens einen Wert ein.", true);
-  const sameDay = vitals.filter(v=>v.date===date).length;
   vitals.push({ date, slot:activeSlot, sys:sys||null, dia:dia||null, pulse:pulse||null, ts:Date.now() });
   vitals.sort((a,b)=>(a.date+(a.slot==="morgens"?"0":"1")).localeCompare(b.date+(b.slot==="morgens"?"0":"1"))||a.ts-b.ts);
   saveVitals();
   showRateLine(sys||null, dia||null, pulse||null);
   sysEl.value=diaEl.value=pulseEl.value="";
-  if (sameDay < VITAL_XP_PER_DAY){ addXp(VITAL_XP, "Messung"); flashMsg("viMsg","Gespeichert, +" + VITAL_XP + " XP"); }
-  else flashMsg("viMsg","Gespeichert");
+  flashMsg("viMsg","Gespeichert");
   renderVitals(); onDataChanged();
 });
 function showRateLine(sys, dia, pulse){
@@ -131,98 +128,6 @@ function renderHistory(){
   }).join("");
 }
 
-/* ---------- Körperdaten ---------- */
-function bmiValue(){
-  const w = parseFloat(weightEl.value), h = parseFloat(heightEl.value)/100;
-  return (w && h) ? w/(h*h) : null;
-}
-function bmiCat(b){
-  if (b==null) return null;
-  if (b<18.5) return {label:"Untergewicht", tone:"mid"};
-  if (b<25) return {label:"Normalgewicht", tone:"good"};
-  if (b<30) return {label:"Übergewicht", tone:"mid"};
-  return {label:"Adipositas", tone:"warn"};
-}
-function maxHrEstimate(){ const a = parseFloat(ageEl.value); return a ? Math.round(208 - 0.7*a) : null; }
-function renderBodyStats(){
-  const b = bmiValue(), cat = bmiCat(b), hr = maxHrEstimate(), items = [];
-  if (b!=null) items.push(bsCell("BMI", fmtN(b,1), `<span class="rate-badge rate-${cat.tone}"><span class="dot"></span>${cat.label}</span>`));
-  if (hr) items.push(bsCell("Maximalpuls (geschätzt)", hr+" bpm"));
-  if (hr) items.push(bsCell("Ausdauerzone", Math.round(hr*0.6)+"–"+Math.round(hr*0.75)+" bpm"));
-  $("bodyStats").innerHTML = items.join("");
-}
-function initSexSeg(){
-  segSet("sexSeg","sex",userSex);
-  segBind("sexSeg", b=>{ userSex = b.dataset.sex; saveConfig(); renderBodyStats(); onDataChanged(); });
-}
-[weightEl, heightEl, ageEl, stepGoalEl].forEach(el => el.addEventListener("input", ()=>{ saveConfig(); renderBodyStats(); renderSteps(); onDataChanged(); }));
-
-/* ---------- Energiebedarf ---------- */
-function computeBMR(){
-  const w = parseFloat(weightEl.value), h = parseFloat(heightEl.value), a = parseFloat(ageEl.value);
-  if (!w || !h || !a || !userSex) return null;
-  const base = 10*w + 6.25*h - 5*a;
-  return userSex==="m" ? base+5 : userSex==="w" ? base-161 : base-78;
-}
-function computeTDEE(){
-  const bmr = computeBMR(); if (bmr==null) return null;
-  const st7 = stepsLastDays(7), se7 = sessionsLastDays(7);
-  const stepKcal = (st7.daysWith ? st7.sum/st7.daysWith : 0) * 0.04;
-  return Math.round(bmr*1.2 + stepKcal + se7.kcal/7);
-}
-
-/* ---------- Tagesanalyse (Startseite) ---------- */
-function renderAnalysis(){
-  const today = todayKey();
-  const todaySteps = steps[today] || 0, goal = stepGoal();
-  const todaySessions = sessions.filter(s=>s.date===today);
-  const sessMins = todaySessions.reduce((a,s)=>a+s.mins,0);
-  const sessKcal = todaySessions.reduce((a,s)=>a+(s.kcal||0),0);
-  const todayVitals = vitals.filter(v=>v.date===today);
-  const lastVital = todayVitals[todayVitals.length-1] || null;
-
-  let score = 0;
-  score += Math.min(30, (todaySteps/goal)*30);
-  score += Math.min(25, (sessMins/30)*25);
-  if (lastVital){ const r = bpRating(lastVital.sys, lastVital.dia); if (r) score += r.tone==="good"?25 : r.tone==="mid"?15 : 8; }
-  score += state.future ? 0 : Math.min(20, 8 + state.days*0.4);
-  const pct = Math.max(0, Math.min(100, Math.round(score)));
-  const [lab, tone] = pct>=80 ? ["Starker Tag","#2de2c2"] : pct>=60 ? ["Guter Tag","#8c6bff"] : pct>=40 ? ["Solider Tag","#ffb547"] : ["Da geht noch was","#ff4f7b"];
-
-  const items = [];
-  if (todaySteps>0) items.push(todaySteps>=goal
-      ? anItem("circle-check", `Schrittziel erreicht: <b>${todaySteps.toLocaleString("de-DE")}</b> Schritte.`, "good")
-      : anItem("footprints", `<b>${todaySteps.toLocaleString("de-DE")}</b> Schritte, noch ${(goal-todaySteps).toLocaleString("de-DE")} bis zum Ziel.`));
-  else items.push(anItem("footprints", "Noch keine Schritte für heute eingetragen."));
-  if (sessMins>0){
-    const names = todaySessions.map(s=>(sportTypes.find(x=>x.id===s.type)||{}).name).join(", ");
-    items.push(anItem("flame", `<b>${sessMins} Min</b> Training (${names})${sessKcal?`, etwa <b>${sessKcal} kcal</b>`:""}.`, "good"));
-  } else items.push(anItem("dumbbell", "Noch kein Training heute. Schon 20 Minuten Bewegung senken Blutdruck und Stress."));
-  if (lastVital){
-    const r = bpRating(lastVital.sys, lastVital.dia), pr = pulseRating(lastVital.pulse);
-    if (r) items.push(anItem("heart-pulse", `Blutdruck heute <b>${lastVital.sys||"–"}/${lastVital.dia||"–"}</b>: ${r.label}.`, r.tone==="good"?"good":"warn"));
-    if (pr) items.push(anItem("activity", `Puls <b>${lastVital.pulse}</b> bpm: ${pr.label}.`, pr.tone==="good"?"good":""));
-  } else items.push(anItem("stethoscope", "Heute noch nicht gemessen."));
-  const nb = kcalBudget(), eaten = todayMealList().reduce((a,m)=>a+(m.kcal||0),0);
-  if (nb && eaten>0){
-    const rem = nb-eaten;
-    items.push(rem>=0 ? anItem("utensils", `<b>${Math.round(eaten).toLocaleString("de-DE")}</b> von ${nb.toLocaleString("de-DE")} kcal gegessen, <b>${Math.round(rem).toLocaleString("de-DE")}</b> übrig.`, "good")
-      : anItem("utensils", `<b>${Math.round(-rem).toLocaleString("de-DE")} kcal</b> über dem Tagesbudget.`, "warn"));
-  }
-
-  const R = 34, C = 2*Math.PI*R;
-  $("analysisBox").innerHTML = `
-    <div class="an-score">
-      <div class="an-ring">
-        <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="${R}" fill="none" stroke="#2b2839" stroke-width="7"/>
-          <circle cx="40" cy="40" r="${R}" fill="none" stroke="${tone}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-pct/100)).toFixed(1)}"/></svg>
-        <div class="arc">${pct}</div>
-      </div>
-      <div><div class="an-score-lab">${lab}</div><div class="muted small">Tageswert aus Schritten, Training, Blutdruck und rauchfreier Zeit</div></div>
-    </div>
-    ${items.join("")}`;
-}
-
 /* ---------- Tiefenanalyse ---------- */
 function vitalsLastDays(n, endOff=0){
   const from = dateKeyOffset(n-1+endOff), to = dateKeyOffset(endOff);
@@ -249,11 +154,11 @@ function renderDeepAnalysis(){
     if (sM!=null && sA!=null && morg.length>=2 && ab.length>=2)
       inner += anItem("sunrise", `Morgens misst du im Schnitt <b>${fmtBP(sM,dM)}</b>, abends <b>${fmtBP(sA,dA)}</b>.` + (sM-sA>=8 ? " Höhere Morgenwerte sind häufig. Liegen sie dauerhaft über 135/85, sprich das ärztlich an." : ""));
     if (sd!=null) inner += anItem("activity", `Schwankung systolisch: <b>±${fmtN(sd,1)}</b>. ` + (sd>12 ? "Recht hoch. Miss möglichst zur gleichen Zeit, im Sitzen, nach 5 Minuten Ruhe und vor dem Kaffee." : "Deine Messbedingungen wirken konstant."));
-    if (best) inner += anItem("medal", `Bester Wert bisher: <b>${best.sys}/${best.dia||"–"}</b> am ${fmtShortDate(best.date)}.`, "good");
+    if (best) inner += anItem("medal", `Bester Wert bisher: <b>${best.sys}/${best.dia||"–"}</b> am ${fmtShortDate(best.date)}`, "good");
     if (s7!=null && sAll!=null && vitals.length>=6){
       const d = s7-sAll;
       inner += d<-1.5 ? anItem("trending-down", `Dein 7-Tage-Schnitt liegt <b>${fmtN(-d,1)} Punkte unter</b> deinem Gesamtschnitt.`, "good")
-        : d>1.5 ? anItem("trending-up", `Dein 7-Tage-Schnitt liegt <b>${fmtN(d,1)} Punkte über</b> dem Gesamtschnitt. Schlaf, Salz, Alkohol und Stress sind die üblichen Stellschrauben.`, "warn")
+        : d>1.5 ? anItem("trending-up", `Dein 7-Tage-Schnitt liegt <b>${fmtN(d,1)} Punkte über</b> dem Gesamtschnitt. Schlaf, Salz, Bewegung und Stress sind die üblichen Stellschrauben.`, "warn")
         : anItem("minus", "Dein 7-Tage-Schnitt liegt auf Höhe deines Gesamtschnitts.");
     }
     cards.push(deepCard("heart-pulse","rose","Blutdruck im Detail", inner));
@@ -270,50 +175,20 @@ function renderDeepAnalysis(){
     cards.push(deepCard("activity","blue","Ruhepuls", inner));
   }
 
-  if (Object.keys(steps).length || sessions.length){
-    const st7 = stepsLastDays(7), stPrev = stepsLastDays(7,7), se7 = sessionsLastDays(7), sePrev = sessionsLastDays(7,7);
-    const whoPct = Math.min(100, Math.round(se7.mins/150*100));
-    let inner = `<div class="mini-grid">
-      ${bsCell("Schritte, 7 Tage", fmtN(st7.sum), stPrev.sum ? deltaTag((st7.sum-stPrev.sum)/stPrev.sum*100, false, "%") : "")}
-      ${bsCell("Tage mit Schrittziel", st7.goalDays+" von 7")}
-      ${bsCell("Training, 7 Tage", se7.mins+" Min", sePrev.mins ? deltaTag(se7.mins-sePrev.mins, false, " Min") : "")}
-      ${bsCell("Verbrannt", se7.kcal ? "~"+fmtN(se7.kcal)+" kcal" : "–")}
-    </div>
-    <div class="an-item"><span class="ai-ico">${icon("target")}</span><span style="flex:1">WHO-Empfehlung, 150 Minuten Bewegung pro Woche: <b>${whoPct} %</b>
-      <div class="bar bar-teal" style="margin-top:8px"><span style="width:${whoPct}%"></span></div></span></div>`;
-    if (st7.daysWith < 4) inner += anItem("pencil", `Nur an ${st7.daysWith} von 7 Tagen Schritte eingetragen. Je vollständiger, desto genauer der Bericht.`);
-    cards.push(deepCard("footprints","green","Aktivität dieser Woche", inner));
-  }
-
-  if (vitals.length >= 6){
-    const goal = stepGoal(), activeDates = new Set();
-    sessions.forEach(s=>activeDates.add(s.date));
-    Object.entries(steps).forEach(([d,n])=>{ if (n>=goal*0.7) activeDates.add(d); });
-    const act = vitals.filter(v=>activeDates.has(v.date)), rest = vitals.filter(v=>!activeDates.has(v.date));
-    if (act.length>=3 && rest.length>=3){
-      const pA=avgKey(act,"pulse"), pR=avgKey(rest,"pulse"), sA2=avgKey(act,"sys"), sR2=avgKey(rest,"sys");
-      let inner = `<div class="mini-grid">
-        ${bsCell("Puls, aktive Tage", pA?Math.round(pA)+" bpm":"–")}${bsCell("Puls, ruhige Tage", pR?Math.round(pR)+" bpm":"–")}
-        ${bsCell("Systolisch, aktiv", sA2?Math.round(sA2):"–")}${bsCell("Systolisch, ruhig", sR2?Math.round(sR2):"–")}</div>`;
-      if (pA!=null && pR!=null) inner += pA<pR-1 ? anItem("chart-line", `An Tagen mit Bewegung liegt dein Puls im Schnitt <b>${fmtN(pR-pA,1)} bpm niedriger</b>.`, "good")
-        : anItem("chart-line", "Zwischen Bewegung und Puls zeigt sich noch kein klarer Unterschied.");
-      if (sA2!=null && sR2!=null && sA2<sR2-2) inner += anItem("dumbbell", `Dein systolischer Druck ist an aktiven Tagen <b>${fmtN(sR2-sA2,1)} Punkte niedriger</b>.`, "good");
-      cards.push(deepCard("chart-line","violet","Zusammenhänge", inner));
-    } else {
-      cards.push(deepCard("chart-line","violet","Zusammenhänge", anItem("hourglass", "Ab etwa 3 aktiven und 3 ruhigen Tagen mit Messwerten vergleiche ich hier, wie Bewegung auf Puls und Blutdruck wirkt.")));
+  // Vergleich vor und nach dem Rauchstopp (erster Anlauf)
+  const firstStart = Math.min(...freeIntervals().map(iv=>iv.start));
+  if (isFinite(firstStart)){
+    const startKey = dateKey(new Date(firstStart));
+    const before = vitals.filter(v=>v.date < startKey), after = vitals.filter(v=>v.date >= startKey);
+    if (before.length >= 3 && after.length >= 3){
+      const sB=avgKey(before,"sys"), dB=avgKey(before,"dia"), sA=avgKey(after,"sys"), dA=avgKey(after,"dia"), pB=avgKey(before,"pulse"), pA=avgKey(after,"pulse");
+      const fmtBP = (s,d) => (s?Math.round(s):"–")+"/"+(d?Math.round(d):"–");
+      let inner = `<div class="mini-grid">${bsCell("Vorher", fmtBP(sB,dB), pB?`<div class="muted small">Puls ${Math.round(pB)}</div>`:"")}
+        ${bsCell("Rauchfrei", fmtBP(sA,dA), pA?`<div class="muted small">Puls ${Math.round(pA)}</div>`:"")}</div>`;
+      if (sB!=null && sA!=null) inner += sA < sB-1 ? anItem("trending-down", `Seit dem Rauchstopp liegt dein systolischer Wert im Schnitt <b>${fmtN(sB-sA,1)} Punkte niedriger</b>.`, "good")
+        : anItem("minus", "Zwischen vorher und nachher zeigt sich beim Blutdruck noch kein klarer Unterschied. Das braucht oft einige Wochen.");
+      cards.push(deepCard("cigarette-off","teal","Vor und nach dem Rauchstopp", inner));
     }
-  }
-
-  const bmr = computeBMR();
-  if (bmr != null){
-    const st7 = stepsLastDays(7), se7 = sessionsLastDays(7);
-    const stepKcal = Math.round((st7.daysWith ? st7.sum/st7.daysWith : 0) * 0.04), sportKcal = Math.round(se7.kcal/7);
-    cards.push(deepCard("zap","amber","Energiebedarf", `<div class="mini-grid">
-      ${bsCell("Grundumsatz", fmtN(Math.round(bmr))+" kcal")}${bsCell("Schritte pro Tag", "~"+fmtN(stepKcal)+" kcal")}
-      ${bsCell("Training pro Tag", "~"+fmtN(sportKcal)+" kcal")}${bsCell("Tagesbedarf", "~"+fmtN(computeTDEE())+" kcal")}</div>`
-      + anItem("info", "Grobe Schätzung nach Mifflin-St-Jeor plus Aktivität. Nach dem Rauchstopp sinkt der Umsatz leicht und der Appetit kommt zurück. Bewegung gleicht das aus.")));
-  } else {
-    cards.push(deepCard("zap","amber","Energiebedarf", anItem("user", "Trag in den Einstellungen Gewicht, Größe, Alter und Geschlecht ein, dann berechne ich hier deinen Tagesbedarf.")));
   }
   $("deepAnalysis").innerHTML = cards.join("") + `<p class="footnote">Automatisch berechnete Orientierung aus deinen Eingaben, keine medizinische Beurteilung.</p>`;
 }

@@ -1,7 +1,7 @@
 {
   "name": "Rauchfrei",
   "short_name": "Rauchfrei",
-  "description": "Rauchfrei- und Gesundheitstracker mit Quests, Trophäen und eigener Stadt.",
+  "description": "Rauchfrei-Begleiter: Zähler, Live-Ersparnis, Verlangen-Protokoll und Erholung.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",

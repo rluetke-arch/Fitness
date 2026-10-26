@@ -54,7 +54,7 @@ function reportHtml(d){
       ${rating ? `<li>Einstufung des Mittelwerts: <b>${rating.label}</b> (Praxis-Richtwerte ESC/ESH)</li>` : ""}
       ${d.overShare!=null ? `<li>Messungen ab ${HOME_SYS}/${HOME_DIA} mmHg (Grenzwert für die Selbstmessung zu Hause): <b>${d.overShare} %</b></li>` : ""}
       ${d.high ? `<li>Höchster systolischer Wert: <b>${r0(d.high.sys)}/${r0(d.high.dia)}</b> am ${fmtLong(d.high.date)}; niedrigster: <b>${r0(d.low.sys)}/${r0(d.low.dia)}</b> am ${fmtLong(d.low.date)}</li>` : ""}
-      ${state.days>0 ? `<li>Rauchfrei seit ${state.days} Tagen${state.alcActive && state.alcDays>0 ? `, alkoholfrei seit ${state.alcDays} Tagen` : ""}</li>` : ""}
+      ${state.days>0 ? `<li>Rauchfrei seit ${state.days} Tagen</li>` : ""}
     </ul>
     <h2>Einzelmessungen</h2>
     <table class="rp-list"><thead><tr><th>Datum</th><th>Morgens <small>(Puls)</small></th><th>Abends <small>(Puls)</small></th></tr></thead><tbody>${rows}</tbody></table>

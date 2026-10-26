@@ -19,9 +19,7 @@
 <svg class="svg-defs" width="0" height="0" aria-hidden="true" focusable="false">
   <defs>
     <linearGradient id="gBrand" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8c6bff"/><stop offset="100%" stop-color="#2de2c2"/></linearGradient>
-    <linearGradient id="gSteps" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2de2c2"/><stop offset="100%" stop-color="#58a6ff"/></linearGradient>
-    <linearGradient id="gAlc" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#2de2c2"/></linearGradient>
-    <linearGradient id="gStreak" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#ff4f7b"/><stop offset="100%" stop-color="#ffb547"/></linearGradient>
+    <linearGradient id="gWave" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff4f7b"/><stop offset="100%" stop-color="#ffb547"/></linearGradient>
   </defs>
 </svg>
 <div class="app">
@@ -32,148 +30,196 @@
       <h1 class="tb-title" id="catTitle">Heute</h1>
       <div class="tb-date" id="tbDate"></div>
     </div>
-    <button class="lvl-pill" id="lvlPill" aria-label="Zum Fortschritt">
-      <span class="lp-ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" class="lp-track"/><circle cx="18" cy="18" r="15" class="lp-arc" id="lpArc"/></svg><b id="lpLvl">1</b></span>
-      <span class="lp-streak"><i data-ic="flame"></i><b id="lpStreak">0</b></span>
-    </button>
   </header>
-
-  <div class="subnav" id="subnav" hidden>
-    <div class="seg seg-wide" id="koerperSeg">
-      <button data-sub="gesundheit" class="active">Vitalwerte</button>
-      <button data-sub="fitness">Training</button>
-      <button data-sub="ernaehrung">Ernährung</button>
-    </div>
-  </div>
 
   <main class="main">
 
     <div class="card notice" id="notStarted" hidden>
       <span class="chip-ic violet"><i data-ic="rocket"></i></span>
-      <span class="notice-txt">Trag dein Startdatum ein, dann laufen Zähler, Ersparnis und Welt los.</span>
+      <span class="notice-txt">Trag ein, seit wann du rauchfrei bist. Dann laufen Zähler und Ersparnis los.</span>
       <button class="btn btn-primary btn-sm" id="goSettings">Eintragen</button>
     </div>
 
     <!-- ================= HEUTE ================= -->
     <section class="panel active" data-panel="uebersicht">
-
-      <div class="player" id="playerCard">
-        <div class="pl-ring">
-          <svg viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="52" class="pl-track"/>
-            <circle cx="60" cy="60" r="52" class="pl-arc" id="plArc"/>
+      <div class="card counter hero">
+        <div class="ring ring-xl">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="44" class="ring-track"/>
+            <circle id="ring" cx="50" cy="50" r="44" class="ring-arc" stroke="url(#gBrand)" stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
           </svg>
-          <div class="pl-core"><span class="pl-lv-lab">Level</span><span class="pl-lv" id="plLvl">1</span></div>
+          <div class="ring-core"><b class="xl" id="dayBig">0</b><small id="dayBigLabel">Tage rauchfrei</small></div>
         </div>
-        <div class="pl-info">
-          <div class="pl-title" id="plTitle">Einsteiger</div>
-          <div class="pl-xp" id="plXp">0 von 100 XP bis Level 2</div>
-          <div class="pl-stats">
-            <div class="pl-stat"><span class="chip-ic rose"><i data-ic="flame"></i></span><div><b id="plStreak">0</b><small id="plStreakLab">Tage Serie</small></div></div>
-            <div class="pl-stat"><span class="chip-ic amber"><i data-ic="hammer"></i></span><div><b id="plBp">0</b><small>Baupunkte</small></div></div>
-            <div class="pl-stat"><span class="chip-ic violet"><i data-ic="trophy"></i></span><div><b id="plTrophies">0</b><small>Trophäen</small></div></div>
-          </div>
+        <div class="clock">
+          <div><b id="cD">0</b><small>Tage</small></div>
+          <div><b id="cH">0</b><small>Std</small></div>
+          <div><b id="cM">0</b><small>Min</small></div>
+          <div><b id="cS">0</b><small>Sek</small></div>
         </div>
       </div>
 
-      <div class="card quests" id="questCard">
-        <div class="card-head">
-          <h2>Tagesquests</h2>
-          <span class="muted" id="questProgress">0 von 3</span>
+      <button class="card fin-hero money-card" data-goto="geld">
+        <small class="muted">Schon gespart</small>
+        <div class="fin-value live-money">0,00 €</div>
+        <div class="fin-live live-money-fine"></div>
+      </button>
+
+      <div class="sum-grid three">
+        <div class="stat"><span class="chip-ic teal"><i data-ic="cigarette-off"></i></span><b id="vapesAvoided">0</b><small>Vapes nicht gekauft</small></div>
+        <div class="stat"><span class="chip-ic violet"><i data-ic="wind"></i></span><b id="puffsAvoided">0</b><small>Züge vermieden</small></div>
+        <div class="stat"><span class="chip-ic rose"><i data-ic="heart"></i></span><b id="ovLife">0 Min</b><small>Lebenszeit zurück</small></div>
+      </div>
+
+      <button class="card next-ms" id="nextMs" data-goto="erholung"></button>
+
+      <div class="card">
+        <div class="card-head"><h2>Verlangen</h2><button class="link-btn" data-goto="verlangen">Auswertung</button></div>
+        <div id="todayCraving"></div>
+        <div class="week-strip" id="weekStrip"></div>
+      </div>
+
+      <div id="todayWish"></div>
+    </section>
+
+    <!-- ================= VERLANGEN ================= -->
+    <section class="panel" data-panel="verlangen">
+      <div class="card crave-cta">
+        <p class="muted small">Kommt gerade eine Welle? Trag sie ein und reite sie aus. Mit jedem Eintrag lernst du deine Muster besser kennen.</p>
+        <button class="btn btn-primary wide" id="craveBtn"><i data-ic="wind"></i>Verlangen erfassen</button>
+      </div>
+
+      <div class="sum-grid three" id="craveSummary"></div>
+
+      <div class="card">
+        <div class="card-head"><h2>Letzte 14 Tage</h2></div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--teal)"></i>Überstanden</span>
+          <span><i class="sw" style="background:var(--amber)"></i>Ausrutscher</span>
         </div>
-        <div id="questList"></div>
-        <div class="quest-bonus" id="questBonus"></div>
+        <div class="chart-box" id="craveChart"></div>
       </div>
 
-      <div class="tiles">
-        <button class="tile" data-goto="rauchfrei">
-          <span class="chip-ic teal"><i data-ic="cigarette-off"></i></span>
-          <span class="tile-lab">Rauchfrei</span>
-          <span class="tile-num"><b id="dayBigTile">0</b><small>Tage</small></span>
-          <span class="tile-sub" id="clockTile">0 Std 0 Min</span>
-        </button>
-        <button class="tile" data-goto="alkohol">
-          <span class="chip-ic blue"><i data-ic="wine-off"></i></span>
-          <span class="tile-lab">Alkoholfrei</span>
-          <span class="tile-num"><b id="alcDayTile">–</b><small id="alcDayTileLab">Tage</small></span>
-          <span class="tile-sub" id="alcClockTile">nicht gestartet</span>
-        </button>
-        <button class="tile" data-goto="finanzen">
-          <span class="chip-ic amber"><i data-ic="piggy-bank"></i></span>
-          <span class="tile-lab">Gespart</span>
-          <span class="tile-num"><b id="ovSaved">0 €</b></span>
-          <span class="tile-sub" id="ovRate">0 € pro Tag</span>
-        </button>
-        <button class="tile" data-goto="fitness">
-          <span class="chip-ic green"><i data-ic="footprints"></i></span>
-          <span class="tile-lab">Schritte heute</span>
-          <span class="tile-num"><b id="ovSteps">0</b></span>
-          <span class="tile-bar"><span id="ovStepsBar"></span></span>
-        </button>
+      <div class="card" id="craveInsights"></div>
+
+      <div class="card">
+        <h2>Wann es kommt</h2>
+        <div id="craveTimes"></div>
       </div>
 
-      <div class="card" id="analysisBox"></div>
+      <div class="card">
+        <h2>Was es auslöst</h2>
+        <div id="craveTriggers"></div>
+      </div>
 
-      <div class="quick">
-        <button class="quick-btn" data-quick="gesundheit"><i data-ic="heart-pulse"></i><span>Messen</span></button>
-        <button class="quick-btn" data-quick="fitness"><i data-ic="dumbbell"></i><span>Training</span></button>
-        <button class="quick-btn" data-quick="ernaehrung"><i data-ic="utensils"></i><span>Mahlzeit</span></button>
-        <button class="quick-btn" id="weekBtn"><i data-ic="chart-column"></i><span>Woche</span></button>
+      <div class="card">
+        <h2>Einträge</h2>
+        <p class="muted small" id="craveCount"></p>
+        <div class="log-list" id="craveList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Ausrutscher oder Rückfall?</h2><span class="chip-ic amber"><i data-ic="shield"></i></span></div>
+        <p class="muted small">Ein einzelner Zug ist ein Ausrutscher. Er wird ehrlich notiert, dein Zähler läuft aber weiter. Wenn du wieder richtig angefangen hast, starte einen neuen Anlauf. Deine Ersparnis, deine Abzeichen und deine längste Strecke bleiben dabei erhalten.</p>
+        <div class="btn-row">
+          <button class="btn btn-outline" id="slipBtn">Ausrutscher eintragen</button>
+          <button class="btn btn-danger" id="restartBtn">Neu starten</button>
+        </div>
+        <button class="link-btn small undo-link" id="undoRestart" hidden>Letzten Neustart rückgängig machen</button>
+      </div>
+    </section>
+
+    <!-- ================= GELD ================= -->
+    <section class="panel" data-panel="geld">
+      <div class="card fin-hero">
+        <small class="muted">Gespart insgesamt</small>
+        <div class="fin-value live-money">0,00 €</div>
+        <div class="fin-live live-money-fine"></div>
+      </div>
+
+      <div class="sum-grid two">
+        <div class="stat"><span class="chip-ic amber"><i data-ic="coins"></i></span><b id="rateDay">0 €</b><small>pro Tag</small></div>
+        <div class="stat"><span class="chip-ic teal"><i data-ic="wallet"></i></span><b id="rateMonth">0 €</b><small>pro Monat</small></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Wunschliste</h2><span class="chip-ic violet"><i data-ic="gift"></i></span></div>
+        <p class="muted small" id="wishAvail"></p>
+        <div id="wishList"></div>
+        <div class="row-end wish-add">
+          <label class="field" style="flex-basis:100%"><span>Was gönnst du dir?</span><input type="text" id="goalName" placeholder="Neue Kopfhörer"></label>
+          <label class="field"><span>Kosten in €</span><input type="number" id="goalCost" placeholder="150" min="1" step="1" inputmode="decimal"></label>
+          <button class="btn btn-primary" id="addGoal">Hinzufügen</button>
+        </div>
+        <div id="wishDone"></div>
+      </div>
+
+      <div class="card">
+        <h2>Hochrechnung</h2>
+        <p class="muted small">So viel kommt zusammen, wenn du rauchfrei bleibst. Bei gleichem Preis, ohne Zinsen.</p>
+        <div class="table-wrap"><table class="fin-table" id="finTable"></table></div>
       </div>
     </section>
 
     <!-- ================= ERFOLGE ================= -->
-    <section class="panel" data-panel="belohnung">
-      <div class="card levelcard">
-        <div class="lc-top">
-          <div class="lc-badge" id="lvBadge">1</div>
-          <div class="lc-info">
-            <div class="lc-title" id="lvTitle">Einsteiger</div>
-            <div class="muted small" id="lvSub">0 XP</div>
-          </div>
-        </div>
-        <div class="bar bar-brand"><span id="lvFill"></span></div>
-        <div class="lc-next" id="lvNext"></div>
-      </div>
+    <section class="panel" data-panel="erfolge">
+      <div class="mini-grid records" id="records"></div>
 
-      <div class="card chest" id="chestBox">
-        <span class="chest-ic" id="chestIco"><i data-ic="package"></i><span class="chest-badge" id="chestBadge" hidden>0</span></span>
-        <div class="chest-info">
-          <div class="chest-h" id="chestH">Belohnungstruhe</div>
-          <div class="muted small" id="chestSub">Füllt sich alle 30 Minuten</div>
+      <div class="card">
+        <div class="card-head cal-head">
+          <button class="icon-btn sm" id="calPrev" aria-label="Voriger Monat"><i data-ic="chevron-left"></i></button>
+          <h2 id="calTitle">Monat</h2>
+          <button class="icon-btn sm" id="calNext" aria-label="Nächster Monat"><i data-ic="chevron-right"></i></button>
         </div>
-        <button class="btn btn-amber btn-sm" id="chestBtn" disabled>Warten</button>
-      </div>
-      <div id="chestReward"></div>
-
-      <div class="card chest" id="dailyBox">
-        <span class="chest-ic" id="dailyIco"><i data-ic="gift"></i></span>
-        <div class="chest-info">
-          <div class="chest-h" id="dailyH">Tagesbonus</div>
-          <div class="muted small" id="dailySub">Einmal pro Tag, wächst mit deiner Serie</div>
+        <div class="cal" id="calGrid"></div>
+        <div class="legend cal-legend">
+          <span><i class="cd free"></i>Rauchfrei</span>
+          <span><i class="cd slip"></i>Ausrutscher</span>
+          <span><i class="cd relapse"></i>Neustart</span>
         </div>
-        <button class="btn btn-primary btn-sm" id="dailyBtn" disabled>Warten</button>
       </div>
-      <div id="dailyReward"></div>
-
-      <div class="card streakcard" id="streakCard"></div>
 
       <div class="sec-head">
-        <h2>Trophäen</h2>
+        <h2>Abzeichen</h2>
         <span class="muted" id="bpText">0 von 0</span>
       </div>
       <div class="bar bar-brand thin"><span id="bpFill"></span></div>
       <div id="nextBadges"></div>
       <div id="badgeSections"></div>
-
-      <div class="card info-card">
-        <h3>So sammelst du XP</h3>
-        <div class="xp-table" id="xpTable"></div>
-      </div>
     </section>
 
-    <!-- ================= VITALWERTE ================= -->
-    <section class="panel" data-panel="gesundheit">
+    <!-- ================= MEHR ================= -->
+    <section class="panel" data-panel="mehr">
+      <div class="menu">
+        <button class="menu-row" data-goto="erholung"><span class="chip-ic teal"><i data-ic="sprout"></i></span><span class="mr-txt"><b>Erholung</b><small>Was in deinem Körper passiert, Lebenszeit</small></span><i data-ic="chevron-right" class="mr-chev"></i></button>
+        <button class="menu-row" data-goto="blutdruck"><span class="chip-ic rose"><i data-ic="heart-pulse"></i></span><span class="mr-txt"><b>Blutdruck</b><small>Messungen, Verlauf, Bericht für die Arztpraxis</small></span><i data-ic="chevron-right" class="mr-chev"></i></button>
+      </div>
+      <div class="menu">
+        <button class="menu-row" data-goto="einstellungen"><span class="chip-ic grey"><i data-ic="settings"></i></span><span class="mr-txt"><b>Einstellungen</b><small>Startzeit, Konsum, Preis, dein Grund</small></span><i data-ic="chevron-right" class="mr-chev"></i></button>
+        <button class="menu-row" data-goto="daten"><span class="chip-ic violet"><i data-ic="download"></i></span><span class="mr-txt"><b>Daten sichern</b><small id="backupHint">Backup erstellen und wiederherstellen</small></span><i data-ic="chevron-right" class="mr-chev"></i></button>
+      </div>
+      <p class="footnote">Alle Daten liegen nur auf diesem Gerät.<br>Gesundheitsangaben sind Orientierung, kein medizinischer Rat.</p>
+    </section>
+
+    <!-- ================= ERHOLUNG ================= -->
+    <section class="panel" data-panel="erholung">
+      <div class="card life">
+        <h2>Gewonnene Lebenszeit</h2>
+        <div class="clock">
+          <div><b id="lifeY">0</b><small>Jahre</small></div>
+          <div><b id="lifeD">0</b><small>Tage</small></div>
+          <div><b id="lifeH">0</b><small>Std</small></div>
+          <div><b id="lifeM">0</b><small>Min</small></div>
+          <div><b id="lifeS">0</b><small>Sek</small></div>
+        </div>
+        <p class="muted small" id="lifeNote"></p>
+      </div>
+      <div class="sec-head"><h2>Regeneration</h2></div>
+      <div id="timeline"></div>
+      <p class="footnote">Die Zeitangaben sind typische Durchschnittswerte und dienen der Orientierung.</p>
+    </section>
+
+    <!-- ================= BLUTDRUCK ================= -->
+    <section class="panel" data-panel="blutdruck">
       <div class="card">
         <div class="card-head">
           <h2>Neue Messung</h2>
@@ -228,268 +274,8 @@
         <div class="msg" id="reportMsg"></div>
       </div>
 
-      <div class="sec-head"><h2>Tiefenanalyse</h2></div>
+      <div class="sec-head"><h2>Auswertung</h2></div>
       <div id="deepAnalysis"></div>
-    </section>
-
-    <!-- ================= TRAINING ================= -->
-    <section class="panel" data-panel="fitness">
-      <div class="card steps-card">
-        <div class="ring ring-lg">
-          <svg viewBox="0 0 100 100">
-            
-            <circle cx="50" cy="50" r="44" class="ring-track"/>
-            <circle id="stepsRing" cx="50" cy="50" r="44" class="ring-arc" stroke="url(#gSteps)" stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
-          </svg>
-          <div class="ring-core"><b id="stepsToday">0</b><small id="stepsGoalLab">Ziel 8.000</small></div>
-        </div>
-        <div class="steps-form">
-          <h2>Schritte</h2>
-          <p class="muted small">Übertrag, was dein iPhone oder deine Uhr heute zählt.</p>
-          <label class="field"><span>Schritte</span><input type="number" id="stepsInput" inputmode="numeric" placeholder="8000" min="0" max="120000"></label>
-          <label class="field"><span>Datum</span><input type="date" id="stepsDate"></label>
-          <div class="btn-row">
-            <button class="btn btn-primary" id="saveSteps">Speichern</button>
-            <button class="btn btn-outline" id="pasteSteps"><i data-ic="clipboard-paste"></i>Aus Health einfügen</button>
-          </div>
-          <div class="msg" id="stepsMsg"></div>
-          <button class="link-btn small" id="shortcutHelp">So richtest du den Kurzbefehl ein</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Trainingseinheit</h2>
-        <div class="sport-type" id="sportType"></div>
-        <div class="grid2">
-          <label class="field"><span>Dauer in Minuten</span><input type="number" id="sportMin" inputmode="numeric" placeholder="30" min="1" max="600"></label>
-          <label class="field"><span>Datum</span><input type="date" id="sportDate"></label>
-        </div>
-        <div class="field">
-          <span>Intensität</span>
-          <div class="seg seg-wide" id="intenseSeg">
-            <button data-int="0.8">Locker</button>
-            <button data-int="1" class="active">Normal</button>
-            <button data-int="1.25">Intensiv</button>
-          </div>
-        </div>
-        <div class="row-end"><button class="btn btn-primary" id="saveSession">Einheit speichern</button></div>
-        <div class="msg" id="sportMsg"></div>
-      </div>
-
-      <div class="card">
-        <h2>Zuletzt trainiert</h2>
-        <div id="sessionList"></div>
-      </div>
-    </section>
-
-    <!-- ================= ERNÄHRUNG ================= -->
-    <section class="panel" data-panel="ernaehrung">
-      <div class="card nu-hero">
-        <div class="ring ring-md">
-          <svg viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="40" class="ring-track"/>
-            <circle id="nuRing" cx="50" cy="50" r="40" class="ring-arc" stroke="#2de2c2" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
-          </svg>
-          <div class="ring-core"><b id="nuRemain">–</b><small>kcal</small></div>
-        </div>
-        <div class="nu-txt">
-          <div class="nu-head" id="nuHeadline">Tagesbudget</div>
-          <div class="muted small" id="nuSub">Trag Körperdaten und Ziel in den Einstellungen ein.</div>
-          <div class="nu-macros" id="nuMacros"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Mahlzeit erfassen</h2>
-        <div class="seg seg-wide" id="mealTypeSeg">
-          <button data-mt="Frühstück" class="active">Früh</button>
-          <button data-mt="Mittagessen">Mittag</button>
-          <button data-mt="Abendessen">Abend</button>
-          <button data-mt="Snack">Snack</button>
-        </div>
-        <div class="add-row">
-          <button class="add-btn primary" id="photoBtn"><i data-ic="camera"></i><span>Foto</span></button>
-          <button class="add-btn" id="searchBtn"><i data-ic="search"></i><span>Suchen</span></button>
-          <button class="add-btn" id="manualBtn"><i data-ic="pencil"></i><span>Manuell</span></button>
-        </div>
-        <div id="recentFoods"></div>
-        <input type="file" id="photoInput" accept="image/*" hidden>
-        <div class="msg" id="nuMsg"></div>
-      </div>
-
-      <div class="card">
-        <h2>Heute gegessen</h2>
-        <div id="mealList"></div>
-      </div>
-
-      <div class="card">
-        <h2>Letzte 7 Tage</h2>
-        <div id="nuWeekChart"></div>
-      </div>
-
-      <div class="card">
-        <h2>Gewicht</h2>
-        <p class="muted small">Am aussagekräftigsten 1–2× pro Woche, morgens vor dem Frühstück.</p>
-        <div class="row-end">
-          <label class="field"><span>Gewicht in kg</span><input type="number" id="wInput" step="0.1" min="20" max="300" placeholder="82,4" inputmode="decimal"></label>
-          <label class="field field-date"><span>Datum</span><input type="date" id="wDate"></label>
-          <button class="btn btn-primary" id="wSave">Speichern</button>
-        </div>
-        <div class="msg" id="wMsg"></div>
-        <div class="sum-grid" id="wStats"></div>
-        <div class="chart-box" id="wChart"></div>
-      </div>
-
-      <div class="card goal-weight">
-        <div class="card-head"><h2>Zielgewicht</h2><span class="chip-ic green"><i data-ic="target"></i></span></div>
-        <label class="field field-sm"><span>Ziel in kg</span><input type="number" id="wTarget" step="0.5" min="30" max="250" placeholder="80" inputmode="decimal"></label>
-        <div id="wGoal"></div>
-      </div>
-      <p class="footnote">Nährwerte sind Schätzwerte aus Durchschnittsdaten oder KI-Erkennung. Für Trends gedacht, nicht grammgenau.</p>
-    </section>
-
-    <!-- ================= WELT ================= -->
-    <section class="panel" data-panel="stadt">
-      <div class="seg seg-wide district-seg" id="districtSeg"></div>
-      <div class="card city-hero">
-        <svg class="city-canvas" id="cityCanvas" viewBox="0 0 420 260" preserveAspectRatio="xMidYMid meet"></svg>
-        <div class="city-bar">
-          <div>
-            <div class="city-name"><span id="cityName">Neustadt</span><button class="icon-btn sm" id="cityRename" aria-label="Umbenennen"><i data-ic="pencil"></i></button></div>
-            <div class="muted small" id="cityTier">Stufe 1, Siedlung</div>
-          </div>
-          <div class="city-avail">
-            <b id="cityAvail">0</b>
-            <small id="cityEarnedLab">Baupunkte verfügbar</small>
-          </div>
-        </div>
-        <div class="city-next">
-          <div class="city-next-lab"><span>Nächste Stufe: <b id="cityNextName">Dorf</b></span><span id="cityNextPct">0 %</span></div>
-          <div class="bar bar-amber"><span id="cityFill"></span></div>
-        </div>
-      </div>
-      <p class="hint"><i data-ic="info"></i>Tippe auf ein freies Grundstück, um zu bauen. Baupunkte bekommst du für rauchfreie und alkoholfreie Stunden, Messungen, Training, Quests und jedes neue Level.</p>
-      <div class="city-stats" id="cityStats"></div>
-    </section>
-
-    <!-- ================= MEHR ================= -->
-    <section class="panel" data-panel="mehr">
-      <div class="menu">
-        <button class="menu-row" data-goto="rauchfrei"><span class="chip-ic teal"><i data-ic="cigarette-off"></i></span><span class="mr-txt"><b>Rauchfrei</b><small>Zähler, Regeneration, Lebenszeit</small></span><i data-ic="chevron-right" class="mr-chev"></i></button>
-        <button class="menu-row" data-goto="alkohol"><span class="chip-ic blue"><i data-ic="wine-off"></i></span><span class="mr-txt"><b>Alkohol</b><small>Abstinenz und Erholung</small></span><i data-ic="chevron-right" class="mr-chev"></i></button>
-        <button class="menu-row" data-goto="finanzen"><span class="chip-ic amber"><i data-ic="piggy-bank"></i></span><span class="mr-txt"><b>Finanzen</b><small>Ersparnis, Sparraten, Sparziele</small></span><i data-ic="chevron-right" class="mr-chev"></i></button>
-      </div>
-      <div class="menu">
-        <button class="menu-row" data-goto="einstellungen"><span class="chip-ic grey"><i data-ic="settings"></i></span><span class="mr-txt"><b>Einstellungen</b><small>Startdaten, Körperdaten, Ziele</small></span><i data-ic="chevron-right" class="mr-chev"></i></button>
-        <button class="menu-row" data-goto="daten"><span class="chip-ic violet"><i data-ic="download"></i></span><span class="mr-txt"><b>Daten sichern</b><small id="backupHint">Backup erstellen und wiederherstellen</small></span><i data-ic="chevron-right" class="mr-chev"></i></button>
-      </div>
-      <p class="footnote">Alle Daten liegen nur auf diesem Gerät.<br>Gesundheitsangaben sind Orientierung, kein medizinischer Rat.</p>
-    </section>
-
-    <!-- ================= RAUCHFREI ================= -->
-    <section class="panel" data-panel="rauchfrei">
-      <div class="card counter">
-        <div class="ring ring-xl">
-          <svg viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="44" class="ring-track"/>
-            <circle id="ring" cx="50" cy="50" r="44" class="ring-arc" stroke="url(#gBrand)" stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
-          </svg>
-          <div class="ring-core"><b class="xl" id="dayBig">0</b><small id="dayBigLabel">Tage rauchfrei</small></div>
-        </div>
-        <div class="clock">
-          <div><b id="cD">0</b><small>Tage</small></div>
-          <div><b id="cH">0</b><small>Std</small></div>
-          <div><b id="cM">0</b><small>Min</small></div>
-          <div><b id="cS">0</b><small>Sek</small></div>
-        </div>
-        <p class="muted small center">Der Ring füllt sich mit jedem Tag einmal.</p>
-      </div>
-
-      <div class="sum-grid three">
-        <div class="stat"><span class="chip-ic teal"><i data-ic="cigarette-off"></i></span><b id="vapesAvoided">0</b><small>Vapes nicht gekauft</small></div>
-        <div class="stat"><span class="chip-ic violet"><i data-ic="wind"></i></span><b id="puffsAvoided">0</b><small>Züge vermieden</small></div>
-        <div class="stat"><span class="chip-ic rose"><i data-ic="heart"></i></span><b id="ovLife">0 Min</b><small>Lebenszeit zurück</small></div>
-      </div>
-
-      <div class="card life">
-        <h2>Gewonnene Lebenszeit</h2>
-        <div class="clock">
-          <div><b id="lifeY">0</b><small>Jahre</small></div>
-          <div><b id="lifeD">0</b><small>Tage</small></div>
-          <div><b id="lifeH">0</b><small>Std</small></div>
-          <div><b id="lifeM">0</b><small>Min</small></div>
-          <div><b id="lifeS">0</b><small>Sek</small></div>
-        </div>
-        <p class="muted small" id="lifeNote"></p>
-      </div>
-
-      <div class="sec-head"><h2>Regeneration</h2></div>
-      <div id="timeline"></div>
-    </section>
-
-    <!-- ================= ALKOHOL ================= -->
-    <section class="panel" data-panel="alkohol">
-      <div class="card notice" id="alcNotSet" hidden>
-        <span class="chip-ic blue"><i data-ic="wine-off"></i></span>
-        <span class="notice-txt">Trag in den Einstellungen ein, seit wann du keinen Alkohol trinkst.</span>
-        <button class="btn btn-primary btn-sm" id="alcGoSettings">Eintragen</button>
-      </div>
-      <div id="alcContent" hidden>
-        <div class="card counter">
-          <div class="ring ring-xl">
-            <svg viewBox="0 0 100 100">
-              
-              <circle cx="50" cy="50" r="44" class="ring-track"/>
-              <circle id="alcRing" cx="50" cy="50" r="44" class="ring-arc" stroke="url(#gAlc)" stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
-            </svg>
-            <div class="ring-core"><b class="xl" id="alcDayBig">0</b><small id="alcDayLabel">Tage alkoholfrei</small></div>
-          </div>
-          <div class="clock">
-            <div><b id="aD">0</b><small>Tage</small></div>
-            <div><b id="aH">0</b><small>Std</small></div>
-            <div><b id="aM">0</b><small>Min</small></div>
-            <div><b id="aS">0</b><small>Sek</small></div>
-          </div>
-        </div>
-        <div class="sum-grid two">
-          <div class="stat"><span class="chip-ic amber"><i data-ic="coins"></i></span><b id="alcSavedStat">0 €</b><small>Gespart</small></div>
-          <div class="stat"><span class="chip-ic blue"><i data-ic="beer-off"></i></span><b id="alcDrinksStat">0</b><small>Flaschen nicht getrunken</small></div>
-          <div class="stat"><span class="chip-ic violet"><i data-ic="package"></i></span><b id="alcCratesStat">0</b><small>Kisten nicht gekauft</small></div>
-          <div class="stat"><span class="chip-ic rose"><i data-ic="flame"></i></span><b id="alcKcalStat">0</b><small>kcal vermieden</small></div>
-        </div>
-        <div class="sec-head"><h2>Erholung</h2></div>
-        <div id="alcTimeline"></div>
-        <div class="card warn-card">
-          <span class="chip-ic rose"><i data-ic="triangle-alert"></i></span>
-          <p>Wer längere Zeit täglich viel getrunken hat, sollte nicht abrupt und allein aufhören. Ein körperlicher Alkoholentzug kann gefährlich werden (Unruhe, Krampfanfälle). Dann bitte vorher ärztlich abklären und begleiten lassen.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- ================= FINANZEN ================= -->
-    <section class="panel" data-panel="finanzen">
-      <div class="card fin-hero">
-        <small class="muted">Gespart insgesamt</small>
-        <div class="fin-value" id="moneySaved">0,00 €</div>
-        <div class="fin-live" id="finLive"></div>
-      </div>
-      <div class="sum-grid two">
-        <div class="stat"><span class="chip-ic teal"><i data-ic="cigarette-off"></i></span><b id="finVapeSaved">0 €</b><small>durch Vape-Verzicht</small></div>
-        <div class="stat"><span class="chip-ic blue"><i data-ic="wine-off"></i></span><b id="finAlcSaved">0 €</b><small>durch Alkohol-Verzicht</small></div>
-      </div>
-      <div class="card">
-        <h2>Sparraten</h2>
-        <div class="table-wrap"><table class="fin-table" id="finTable"></table></div>
-      </div>
-      <div class="sec-head"><h2>Sparziele</h2></div>
-      <div id="goalList"></div>
-      <div class="card">
-        <div class="row-end">
-          <label class="field" style="flex-basis:100%"><span>Wofür sparst du?</span><input type="text" id="goalName" placeholder="Wochenendtrip"></label>
-          <label class="field"><span>Kosten in €</span><input type="number" id="goalCost" placeholder="400" min="1" step="1" inputmode="decimal"></label>
-          <button class="btn btn-primary" id="addGoal">Ziel anlegen</button>
-        </div>
-      </div>
     </section>
 
     <!-- ================= EINSTELLUNGEN ================= -->
@@ -498,65 +284,16 @@
         <h2>Rauchfrei</h2>
         <div class="grid2">
           <label class="field span2"><span>Rauchfrei seit</span><input type="datetime-local" id="startDate"></label>
-          <label class="field"><span>Vapes pro Tag</span><input type="number" id="perDay" step="0.1" min="0" value="1.5" inputmode="decimal"></label>
+          <label class="field"><span>Vapes pro Tag vorher</span><input type="number" id="perDay" step="0.1" min="0" value="1.5" inputmode="decimal"></label>
           <label class="field"><span>Preis pro Vape in €</span><input type="number" id="price" step="0.01" min="0" value="12.50" inputmode="decimal"></label>
           <label class="field span2"><span>Warum ich aufhöre</span><textarea id="whyText" placeholder="Ich will wieder frei durchatmen und mein Geld für schöne Dinge ausgeben."></textarea></label>
         </div>
-        <p class="muted small">Dein Grund erscheint, wenn du den Notfall-Knopf drückst.</p>
-      </div>
-
-      <div class="card">
-        <h2>Alkohol</h2>
-        <div class="grid2">
-          <label class="field span2"><span>Alkoholfrei seit</span><input type="datetime-local" id="alcStart"></label>
-          <label class="field"><span>Flaschen pro Woche vorher</span><input type="number" id="alcPerWeek" step="1" min="0" placeholder="10" inputmode="numeric"></label>
-          <label class="field"><span>Preis pro Kiste in €</span><input type="number" id="alcCrate" step="0.01" min="0" placeholder="16,99" inputmode="decimal"></label>
-          <label class="field"><span>kcal pro 100 ml</span><input type="number" id="alcKcal100" step="1" min="0" placeholder="42" inputmode="numeric"></label>
-        </div>
-        <p class="muted small">Gerechnet wird mit 0,33-l-Flaschen, 24 pro Kiste.</p>
-        <div class="mini-grid" id="beerDerived"></div>
-      </div>
-
-      <div class="card">
-        <h2>Körperdaten</h2>
-        <div class="grid2">
-          <label class="field"><span>Gewicht in kg</span><input type="number" id="weight" step="0.1" min="20" max="300" placeholder="80" inputmode="decimal"></label>
-          <label class="field"><span>Größe in cm</span><input type="number" id="height" step="1" min="100" max="250" placeholder="180" inputmode="numeric"></label>
-          <label class="field"><span>Alter</span><input type="number" id="age" step="1" min="10" max="120" placeholder="35" inputmode="numeric"></label>
-          <label class="field"><span>Schrittziel pro Tag</span><input type="number" id="stepGoal" step="500" min="1000" max="40000" value="8000" inputmode="numeric"></label>
-        </div>
-        <div class="field">
-          <span>Geschlecht (für den Kalorienbedarf)</span>
-          <div class="seg seg-wide" id="sexSeg">
-            <button data-sex="m">Männlich</button>
-            <button data-sex="w">Weiblich</button>
-            <button data-sex="d">Divers</button>
-          </div>
-        </div>
-        <div class="mini-grid" id="bodyStats"></div>
-      </div>
-
-      <div class="card">
-        <h2>Ernährungsziel</h2>
-        <div class="seg seg-wide seg-wrap" id="nutriGoalSeg">
-          <button data-goal="-500">Abnehmen</button>
-          <button data-goal="-250">Leicht abnehmen</button>
-          <button data-goal="0" class="active">Halten</button>
-          <button data-goal="300">Zunehmen</button>
-        </div>
-        <p class="muted small" id="nutriGoalHint">Abnehmen zieht 500 kcal, leicht abnehmen 250 kcal vom berechneten Bedarf ab.</p>
-        <label class="field"><span>Festes Tagesbudget in kcal (optional)</span><input type="number" id="nutriTarget" step="50" min="800" placeholder="automatisch" inputmode="numeric"></label>
-      </div>
-
-      <div class="card">
-        <h2>Foto-Erkennung</h2>
-        <label class="field"><span>Anthropic-API-Schlüssel</span><input type="password" id="aiKey" placeholder="sk-ant-…" autocomplete="off"></label>
-        <p class="muted small">Optional. Der Schlüssel bleibt auf diesem Gerät und landet nie im Backup. Jede Erkennung kostet wenige Cent, das Foto wird dafür an Anthropic gesendet.</p>
+        <p class="muted small">Dein Grund erscheint, wenn du ein Verlangen erfasst. Die Startzeit änderst du hier nur bei einem Tippfehler. Für einen echten Neustart gibt es im Bereich Verlangen den Knopf „Neu starten“.</p>
       </div>
 
       <div class="card danger-zone">
         <h2>Alles zurücksetzen</h2>
-        <p class="muted small">Löscht alle Einträge, deine Welt und deinen Fortschritt auf diesem Gerät. Erstell vorher ein Backup.</p>
+        <p class="muted small">Löscht alle Einträge und deinen Fortschritt auf diesem Gerät. Erstell vorher ein Backup.</p>
         <button class="btn btn-danger" id="resetBtn">Alle Daten löschen</button>
       </div>
     </section>
@@ -565,7 +302,7 @@
     <section class="panel" data-panel="daten">
       <div class="card">
         <h2>Backup erstellen</h2>
-        <p class="muted small">Speichert alle Einträge, deine Welt und deinen Fortschritt in einer Datei. Leg sie in iCloud Drive oder schick sie dir per Mail. Dein API-Schlüssel ist nicht enthalten.</p>
+        <p class="muted small">Speichert alle Einträge und deinen Fortschritt in einer Datei. Leg sie in iCloud Drive oder schick sie dir per Mail.</p>
         <div class="backup-meta" id="backupMeta"></div>
         <button class="btn btn-primary" id="exportBtn"><i data-ic="download"></i>Backup erstellen</button>
       </div>
@@ -582,37 +319,16 @@
 
   <nav class="tabbar" id="tabbar">
     <button class="tab active" data-tab="heute"><i data-ic="house"></i><span>Heute</span></button>
-    <button class="tab" data-tab="koerper"><i data-ic="heart-pulse"></i><span>Körper</span></button>
-    <button class="tab" data-tab="welt"><i data-ic="building"></i><span>Welt</span></button>
-    <button class="tab" data-tab="erfolge"><i data-ic="trophy"></i><span>Erfolge</span><em class="tab-dot" id="tabDot" hidden></em></button>
+    <button class="tab" data-tab="verlangen"><i data-ic="wind"></i><span>Verlangen</span></button>
+    <button class="tab" data-tab="geld"><i data-ic="piggy-bank"></i><span>Geld</span></button>
+    <button class="tab" data-tab="erfolge"><i data-ic="trophy"></i><span>Erfolge</span></button>
     <button class="tab" data-tab="mehr"><i data-ic="layout-grid"></i><span>Mehr</span></button>
   </nav>
 </div>
 
 <button class="sos-btn" id="sosBtn" hidden><i data-ic="wind"></i><span>Verlangen</span></button>
 
-<div class="toast" id="cityToast" role="status"></div>
-
-<div class="sheet-wrap" id="cityOverlay">
-  <div class="sheet">
-    <div class="sheet-head"><h3 id="citySheetTitle">Bauen</h3><button class="icon-btn" id="citySheetClose" aria-label="Schließen"><i data-ic="x"></i></button></div>
-    <div id="citySheetBody"></div>
-  </div>
-</div>
-
-<div class="sheet-wrap" id="nutriOverlay">
-  <div class="sheet">
-    <div class="sheet-head"><h3 id="nutriSheetTitle">Mahlzeit</h3><button class="icon-btn" id="nutriSheetClose" aria-label="Schließen"><i data-ic="x"></i></button></div>
-    <div id="nutriSheetBody"></div>
-  </div>
-</div>
-
-<div class="sheet-wrap" id="weekOverlay">
-  <div class="sheet">
-    <div class="sheet-head"><h3 id="weekSheetTitle">Wochenrückblick</h3><button class="icon-btn" id="weekSheetClose" aria-label="Schließen"><i data-ic="x"></i></button></div>
-    <div id="weekSheetBody"></div>
-  </div>
-</div>
+<div class="toast" id="toast" role="status"></div>
 
 <div class="sheet-wrap" id="infoOverlay">
   <div class="sheet">
@@ -636,27 +352,14 @@
   </div>
 </div>
 
-<div class="lvup" id="lvupOverlay">
-  <div class="lvup-ring"></div>
-  <div class="lvup-card">
-    <div class="lvup-label">Level erreicht</div>
-    <div class="lvup-num" id="lvupNum">2</div>
-    <div class="lvup-title" id="lvupTitle">Entschlossen</div>
-    <div class="lvup-reward" id="lvupReward"></div>
-  </div>
-</div>
-
 <div id="printArea" aria-hidden="true"></div>
 
 <script src="js/icons.js"></script>
 <script src="js/core.js"></script>
 <script src="js/tracker.js"></script>
+<script src="js/craving.js"></script>
 <script src="js/health.js"></script>
-<script src="js/fitness.js"></script>
-<script src="js/nutrition.js"></script>
-<script src="js/game.js"></script>
-<script src="js/city.js"></script>
-<script src="js/report.js"></script>
+<script src="js/erfolge.js"></script>
 <script src="js/bpreport.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/app.js"></script>
