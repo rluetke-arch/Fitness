@@ -34,7 +34,8 @@ Der Nutzer nutzt die App als Home-Bildschirm-App auf dem iPhone (Safari).
   Speicher getrennt von Safari. Manuelles Eintragen wollte der Nutzer nicht.
 
 ## Fortschritt (in `js/erfolge.js`)
-- Schlichte Abzeichen in `badgeCats` ohne Punkte; einmal erreichte bleiben über `rf:badgeseen` auch nach einem Neustart erhalten.
+- Schlichte Abzeichen in `badgeCats` ohne Punkte, freigeschaltet nur aus echten Daten (nie aus `rf:badgeseen`, das enthält
+  noch Trophäen der alten Version). Sie bleiben nach einem Neustart, weil sie an längster Strecke und Gesamtwerten hängen.
 - Ein Ausrutscher (`slip`) lässt den Zähler weiterlaufen. „Neu starten“ legt den Anlauf in `rf:attempts` ab;
   Ersparnis, Lebenszeit und Gesamtzeit zählen über alle Anläufe, die längste Strecke bleibt.
 

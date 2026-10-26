@@ -79,11 +79,11 @@ const badgeCats = [
   { cat:"Gönnen", color:"#8c6bff", val:()=>goals.filter(g=>g.done).length, unit:"Wünsche erfüllt", items:[
     { ico:"gift", name:"Erster Wunsch", t:1 }, { ico:"party-popper", name:"Drei Wünsche", t:3 }, { ico:"gem", name:"Zehn Wünsche", t:10 } ] },
 ];
-// Einmal freigeschaltete Abzeichen bleiben, auch nach einem Neustart
+// Freischaltung nur aus echten Daten: Längste Strecke, Gesamtzeit und Ersparnis zählen über alle Anläufe,
+// deshalb bleiben Abzeichen nach einem Neustart erhalten. rf:badgeseen dient nur dazu, Neues zu melden.
 function allBadges(){
-  const seen = store.get("rf:badgeseen") || [];
   return badgeCats.flatMap(c=>{ const v = c.val()||0;
-    return c.items.map((b,i)=>{ const id = c.cat+"#"+i; return { ...b, id, cat:c.cat, color:c.color, unit:c.unit, v, earned: v>=b.t || seen.includes(id) }; }); });
+    return c.items.map((b,i)=>({ ...b, id:c.cat+"#"+i, cat:c.cat, color:c.color, unit:c.unit, v, earned: v>=b.t })); });
 }
 function fmtBadgeVal(v, unit){ return unit==="€" ? fmtEuro0(v) : Math.floor(v).toLocaleString("de-DE"); }
 function badgeHtml(b){
@@ -104,13 +104,15 @@ function renderBadges(list){
     <div class="badges">${list.filter(b=>b.cat===c.cat).map(badgeHtml).join("")}</div>`).join("");
 }
 // Neue Abzeichen erkennen, merken und kurz melden
+// rf:badgeseen: { v:2, ids:[…] }. Die alte Liste (Array) enthielt Trophäen der Vorversion und wird einmalig ersetzt.
 function checkNewBadges(list){
-  const seen = store.get("rf:badgeseen");
+  const raw = store.get("rf:badgeseen");
   const earnedIds = list.filter(b=>b.earned).map(b=>b.id);
-  if (!seen){ store.set("rf:badgeseen", earnedIds); return; } // erster Start: still übernehmen
+  if (!raw || Array.isArray(raw)){ store.set("rf:badgeseen", { v:2, ids:earnedIds }); return; } // erster Start: still übernehmen
+  const seen = raw.ids || [];
   const fresh = list.filter(b=>b.earned && !seen.includes(b.id));
   if (!fresh.length) return;
-  store.set("rf:badgeseen", [...seen, ...fresh.map(b=>b.id)]);
+  store.set("rf:badgeseen", { v:2, ids:[...seen, ...fresh.map(b=>b.id)] });
   toast(fresh.length>1 ? fresh.length + " neue Abzeichen" : "Neues Abzeichen: " + fresh[0].name, "trophy");
 }
 
